@@ -1,0 +1,16 @@
+{
+  "name": "Jazz",
+  "mode": "graphic",
+  "preamp": -4,
+  "graphicEQ": {
+    "bandCount": 10,
+    "bands": {
+      "31": 3, "63": 3, "125": 4, "250": 2, "500": 0,
+      "1000": 0, "2000": 0, "4000": 1, "8000": 2, "16000": 2
+    }
+  },
+  "parametricEQ": [],
+  "eqEnabled": true,
+  "channel": "all",
+  "device": null
+}

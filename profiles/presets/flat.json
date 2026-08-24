@@ -1,0 +1,16 @@
+{
+  "name": "Flat",
+  "mode": "graphic",
+  "preamp": 0,
+  "graphicEQ": {
+    "bandCount": 10,
+    "bands": {
+      "31": 0, "63": 0, "125": 0, "250": 0, "500": 0,
+      "1000": 0, "2000": 0, "4000": 0, "8000": 0, "16000": 0
+    }
+  },
+  "parametricEQ": [],
+  "eqEnabled": true,
+  "channel": "all",
+  "device": null
+}

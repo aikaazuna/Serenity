@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build installers
+        run: npm run dist:all
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            > **Note Windows SmartScreen** — Un avertissement SmartScreen (« Windows a protégé votre PC ») peut s’afficher à l’ouverture ou à l’installation. C’est **normal** : ColorFlow n’est pas signé avec un certificat Authenticode payant (coût élevé pour un projet open source). L’application est sûre ; cliquez sur « Informations complémentaires », puis « Exécuter quand même ».
+          files: |
+            release/ColorFlow-Setup-*.exe
+            release/ColorFlow-Portable-*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

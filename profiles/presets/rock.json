@@ -1,0 +1,16 @@
+{
+  "name": "Rock",
+  "mode": "graphic",
+  "preamp": -5,
+  "graphicEQ": {
+    "bandCount": 10,
+    "bands": {
+      "31": 5, "63": 4, "125": 3, "250": 0, "500": -1,
+      "1000": -1, "2000": 0, "4000": 2, "8000": 3, "16000": 4
+    }
+  },
+  "parametricEQ": [],
+  "eqEnabled": true,
+  "channel": "all",
+  "device": null
+}

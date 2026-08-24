@@ -1,0 +1,16 @@
+{
+  "name": "Bass Boost",
+  "mode": "graphic",
+  "preamp": -6,
+  "graphicEQ": {
+    "bandCount": 10,
+    "bands": {
+      "31": 6, "63": 5, "125": 4, "250": 2, "500": 0,
+      "1000": 0, "2000": 0, "4000": 0, "8000": 0, "16000": 0
+    }
+  },
+  "parametricEQ": [],
+  "eqEnabled": true,
+  "channel": "all",
+  "device": null
+}
