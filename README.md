@@ -6,7 +6,7 @@ Application Windows qui réunit un égaliseur audio piloté par Equalizer APO et
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0A84FF?style=flat-square&logo=windows)](https://github.com/aikaazuna/Serenity/releases)
 [![Release](https://img.shields.io/badge/Release-v1.0.0-30D158?style=flat-square&logo=github)](https://github.com/aikaazuna/Serenity/releases)
-[![License](https://img.shields.io/badge/License-MIT-BF5AF2?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-BF5AF2?style=flat-square)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-33.x-47848F?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
 
@@ -127,7 +127,7 @@ Les binaires sortent dans `release/` :
 
 ## Licence
 
-MIT — voir [LICENSE](LICENSE).
+Distribué sous licence **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)** — voir [LICENSE](LICENSE) ou le [résumé officiel](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.fr).
 
 ---
 
