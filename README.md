@@ -1,6 +1,6 @@
 # Serenity Hub
 
-<p align="center"><img src="logo.png" width="120" alt="Serenity Hub"></p>
+<p align="center"><img src="logo.png" alt="Serenity Hub"></p>
 
 Application Windows qui réunit un égaliseur audio piloté par Equalizer APO et une boîte à outils couleur (pipette, palettes, contrastes) dans la même interface.
 
