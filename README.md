@@ -1,172 +1,191 @@
-# ColorFlow
+# Serenity Hub
 
-Color picker professionnel pour Windows — pipette système, formats développeurs,
-générateur de palettes, analyse de contraste WCAG, historique, favoris et export.
-Interface glassmorphism premium (Electron + React + TypeScript + Tailwind + Framer Motion).
+<div align="center">
 
-![Node](https://img.shields.io/badge/node-%3E%3D18-informational)
-![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
-![License](https://img.shields.io/badge/license-MIT-lightgrey)
+![Serenity Hub Logo](logo.png)
 
-## Sommaire
+**La suite logicielle tout-en-un pour Windows dédiée à l'étalonnage audio haute précision et au design de couleurs professionnel.**
 
-- [Aperçu](#aperçu)
-- [Choix techniques](#choix-techniques)
-- [Architecture du projet](#architecture-du-projet)
-- [Installation](#installation)
-- [Scripts npm](#scripts-npm)
-- [Build & installateur Windows](#build--installateur-windows)
-- [Fonctionnalités](#fonctionnalités)
-- [Raccourcis clavier](#raccourcis-clavier)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0A84FF?style=flat-square&logo=windows)](https://github.com/aikaazuna/Serenity/releases)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-30D158?style=flat-square&logo=github)](https://github.com/aikaazuna/Serenity/releases)
+[![License](https://img.shields.io/badge/License-MIT-BF5AF2?style=flat-square)](LICENSE)
+[![Electron](https://img.shields.io/badge/Electron-33.x-47848F?style=flat-square&logo=electron)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-18.x-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
 
-## Aperçu
+[Télécharger Serenity Hub](https://github.com/aikaazuna/Serenity/releases) • [Fonctionnalités](#-fonctionnalités-principales) • [Architecture](#-architecture-technique) • [Installation & Développement](#-installation--développement)
 
-ColorFlow est une application desktop Windows complète destinée aux développeurs,
-designers et graphistes. Elle reste accessible en permanence depuis la barre système
-et permet de capturer, analyser, convertir et organiser des couleurs sans quitter
-son flux de travail.
+</div>
 
-## Choix techniques
+---
 
-| Domaine        | Choix                                                                 |
-| --------------- | ---------------------------------------------------------------------- |
-| Shell desktop   | **Electron** (Main process / Renderer séparés, `contextIsolation`)     |
-| UI              | **React 18** + **TypeScript strict**                                   |
-| Build           | **Vite** (renderer + fenêtre pipette), **tsc** (main process ESM)      |
-| Style           | **Tailwind CSS** (design system glassmorphism, variables CSS pour les thèmes) |
-| Animations      | **Framer Motion** (transitions de pages, listes, notifications, pipette) |
-| Composants      | **Radix UI** (Dialog, Select, Switch, Tabs, Tooltip) — accessibles et sans style imposé |
-| État            | **Zustand** (store applicatif persistant + store UI éphémère)          |
-| Couleur         | **colorjs.io** (LAB / OKLCH), conversions maison pour RGB/HSL/HSV/CMYK  |
-| Stockage local  | **electron-store** (JSON chiffré sur disque, jamais accédé directement par le renderer) |
-| Packaging       | **electron-builder** (NSIS + portable, icône .ico multi-résolutions)   |
+## 🌟 Présentation
 
-### Sécurité / architecture Electron
+**Serenity Hub** regroupe dans une interface élégante de type *Glassmorphism* deux univers indispensables :
+1. **Audio Studio & DSP Engine** : Égaliseur paramétrique et graphique de précision connecté en temps réel à **Equalizer APO**, plus de 2000 calibrations de casques AutoEQ, et un rack d'effets audio avancés.
+2. **Color Studio & Visual Toolkit** : Pipette système multi-écrans avec loupe pixel-perfect, inspecteur de formats pour développeurs, générateur de dégradés/palettes, extracteur d'image et vérificateur d'accessibilité WCAG.
 
-- `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` sur **toutes** les fenêtres (principale + pipette).
-- Aucun accès direct à Node.js depuis React : tout passe par un **preload** qui expose une API
-  typée et minimale via `contextBridge` (`window.colorflow`).
-- Les canaux IPC sont centralisés dans `shared/types.ts` (`IpcChannels`) pour éviter les typos
-  et garder une seule source de vérité entre le main process et le renderer.
-- Le module `desktopCapturer` (capture d'écran pour la pipette) n'est utilisé que dans le
-  main process, jamais exposé au renderer — seule l'image déjà capturée est transmise.
+---
 
-## Architecture du projet
+## ✨ Fonctionnalités Principales
+
+### 🎧 1. Audio Studio & Égalisation
+* **Égaliseur Paramétrique & Graphique** :
+  * **Mode Paramétrique** : Jusqu'à 24 filtres entièrement configurables (*Peaking*, *Low Shelf*, *High Shelf*, *Low Pass*, *High Pass*, *Notch*, *Band Pass*, *All Pass*) avec réglage fin de la fréquence (20 Hz - 20 kHz), du gain (±20 dB) et du facteur Q.
+  * **Mode Graphique** : Égaliseur 10, 15 ou 31 bandes standard ISO.
+* **Canvas Interactif 60 FPS** : Rendu visuel temps réel de la courbe de réponse en fréquence cumulée, prévisualisant instantanément le gain et la préamplification globale.
+* **Rack d'Effets DSP Haute Qualité** :
+  * **Sub-Bass Boost** : Renforcement dynamique des basses fréquences sans distorsion.
+  * **Treble Air** : Ajout de clarté, de brillance et d'ouverture dans les très hautes fréquences (>10 kHz).
+  * **Balance Stéréo** : Répartition panoramique L/R précise.
+  * **Crossfeed Casque** : Spatialisation naturelle réduisant la fatigue auditive lors des longues sessions d'écoute.
+  * **Loudness Guard** : Protection anti-saturation et anti-clipping automatique.
+* **Base de Données AutoEQ (2000+ Modèles)** :
+  * Recherche instantanée par marque et modèle (Sennheiser, Beyerdynamic, Sony, Audio-Technica, Apple, Bose, Moondrop, etc.).
+  * Application de la courbe Harman en un clic.
+  * Import direct de fichiers AutoEQ `.txt` personnalisés.
+* **Synchronisation Native Equalizer APO** : Écriture et actualisation instantanée du fichier `config.txt` sous Windows.
+* **Multi-Périphériques & Canaux** : Sélection simultanée de plusieurs cartes sons/sorties audio et routage indépendant (Canal Gauche / Droit / Tous).
+
+---
+
+### 🎨 2. Color Studio & Design
+* **Pipette Système Multi-Écrans** :
+  * Raccourci global configurable (`Ctrl+Shift+C` par défaut) opérant par-dessus n'importe quel écran ou application plein écran.
+  * Loupe agrandie temps réel (zoom 2x à 16x) avec affichage de la grille de pixels et valeur HEX instantanée.
+* **Inspecteur Multi-Formats** :
+  * Formats généraux : **HEX**, **RGB**, **RGBA**, **HSL**, **HSV**, **CMYK**, **LAB**, **OKLCH**.
+  * Formats Développeurs : **CSS**, **Variables CSS**, **Tailwind CSS**, **Flutter**, **SwiftUI**, **Android XML**, **SCSS**.
+* **Palette & Harmonies de Couleurs** :
+  * Génération automatique : Monochrome, Analogue, Complémentaire, Split-Complémentaire, Triadique, Tétradique.
+  * Export rapide en JSON, CSS, Tailwind et image PNG.
+* **Gradient Studio** : Créateur de dégradés linéaires et radiaux avec multi-stops, réglage d'angle et export CSS/Tailwind.
+* **Simulateur d'Accessibilité & Vision** :
+  * Simulation des différents daltonismes : *Protanopie*, *Deutéranopie*, *Tritanopie*, *Achromatopsie*.
+  * Calculateur de contraste conforme aux normes **WCAG 2.1 (AA / AAA)**.
+* **Extracteur d'Image** : Importez n'importe quelle image ou photo pour en extraire automatiquement la palette dominante.
+* **Historique & Collections de Favoris** : Sauvegarde automatique de vos captures et organisation en dossiers thématiques.
+
+---
+
+### 🚀 3. Interface, Performance & Ergonomie
+* **Design Glassmorphism Moderne** : Inspiré des directives esthétiques Apple macOS / iOS avec gestion fine du flou d'arrière-plan (*backdrop blur*) et des transparences.
+* **Typographie Géométrique** : Intégration de la police **Space Grotesk** pour une lisibilité et une esthétique optimales.
+* **Animations Fluides (Framer Motion)** : Micro-interactions, transitions de pages et menus dynamiques.
+* **Palette de Commandes (`Ctrl+K`)** : Recherche rapide parmi les outils, fonctionnalités, couleurs et presets audio.
+* **Système Bilingue Intégral** : Bascule instantanée entre **Français** et **Anglais** sur 100% de l'application.
+* **Système de Mise à Jour Automatique** : Détection automatique des nouvelles versions publiées sur GitHub avec notification intégrée.
+
+---
+
+## 🛠 Choix Techniques & Architecture
 
 ```
-colorflow/
-├── electron/                  # Main process (Node.js, compilé avec tsc en ESM)
-│   ├── main.ts                 # Entrée app, cycle de vie, single-instance lock
-│   ├── preload.ts              # Pont contextBridge (aucune autre porte d'entrée)
-│   ├── ipc.ts                  # Tous les handlers IPC
-│   ├── store.ts                # electron-store (settings/historique/favoris)
-│   ├── tray.ts                 # Icône & menu system tray
-│   ├── shortcuts.ts            # Raccourci global configurable (globalShortcut)
-│   ├── autostart.ts            # Démarrage avec Windows
-│   └── windows/
-│       ├── mainWindow.ts       # Fenêtre principale (frameless, glass)
-│       └── pickerWindows.ts    # Fenêtres pipette (une par écran physique)
-├── shared/                    # Types partagés main <-> renderer (aucune dépendance Node)
+Serenity/
+├── electron/                  # Processus Principal Electron (Node.js / ESM)
+│   ├── main.ts                # Cycle de vie, gestion des fenêtres et single instance lock
+│   ├── preload.ts             # Pont contextBridge isolé (window.colorflow)
+│   ├── ipc.ts                 # Handlers IPC (fichiers APO, audio devices, pipette, updater)
+│   ├── updater.ts             # Module d'auto-update GitHub Releases
+│   ├── store.ts               # Stockage persistant sécurisé (electron-store)
+│   └── windows/               # Gestionnaires des fenêtres (mainWindow, pickerWindows)
+├── shared/                    # Types partagés Main <-> Renderer (zero-dependency)
 │   ├── types.ts
 │   └── preloadApi.ts
-├── src/                        # Renderer React (Vite)
+├── src/                       # Application React (Renderer Vite)
 │   ├── components/
-│   │   ├── layout/              # TitleBar, Sidebar, AppShell, SplashScreen
-│   │   ├── color/                # ColorHero, formats, contraste, palettes, capture flash
-│   │   ├── picker/                # Overlay pipette + loupe (fenêtre dédiée)
-│   │   ├── notifications/         # Centre de notifications animé
-│   │   ├── search/                # Palette de commande (Ctrl+K)
-│   │   └── ui/                    # Design system (Button, GlassCard, Dialog, Select…)
-│   ├── pages/                  # Home, Palettes, History, Favorites, Settings
-│   ├── hooks/                  # useColorSnapshot, useClipboard, usePickerBridge…
-│   ├── state/                  # appStore (données) / uiStore (navigation, éphémère)
-│   ├── lib/color/               # convert, formats, palette, contrast, names
-│   └── lib/export/              # export JSON/CSS/SCSS/Tailwind/PNG
-├── logo.png                    # Source unique du logo de l'application
-├── scripts/generate-icons.mjs  # Génère les icônes app + tray depuis logo.png
-├── build/                      # Icônes utilisées par electron-builder
-├── index.html / picker.html    # Points d'entrée Vite (fenêtre principale / pipette)
-└── vite.config.ts, tailwind.config.js, electron/tsconfig.json, tsconfig.json
+│   │   ├── audio/             # ParametricEQ, GraphicEQ, EffectsRack, PresetsLibrary...
+│   │   ├── color/             # ColorHero, Formats, Contrast, Palettes...
+│   │   ├── picker/            # Overlay pipette plein écran et loupe
+│   │   ├── layout/            # TitleBar, Sidebar, AppShell, Navigation
+│   │   ├── ui/                # Composants Radix UI personnalisés (Switch, Select, Dialog...)
+│   │   └── search/            # Command Palette (Ctrl+K)
+│   ├── pages/                 # AudioPage, MixerPage, ClipsPage, PalettesPage, SettingsPage...
+│   ├── state/                 # Stores Zustand (audioStore, appStore, uiStore)
+│   ├── lib/                   # Moteurs DSP (eq-engine.ts, autoeq-service.ts, conversions couleur)
+│   └── hooks/                 # Hooks réutilisables (useI18n, useTheme, useWindowState...)
+├── build/                     # Assets d'empaquetage (.ico multi-résolutions, logos)
+└── package.json               # Dépendances et scripts de packaging
 ```
 
-## Installation
+| Composant | Technologie |
+|---|---|
+| **Shell Desktop** | **Electron 33** (Architecture isolée `contextIsolation: true`, `sandbox: true`) |
+| **Interface Utilisateur** | **React 18** + **TypeScript** |
+| **Styles & Thèmes** | **Tailwind CSS** + Variables CSS dynamiques |
+| **Moteur d'Animation** | **Framer Motion 11** |
+| **Gestion d'État** | **Zustand 5** avec synchronisation persistante |
+| **Colorimétrie** | **Color.js** (Espace colorimétrique CIE LAB, OKLCH, sRGB) |
+| **Moteur Audio** | **Equalizer APO Integration** + **Web Audio API** |
+| **Packaging & Distribution** | **electron-builder** (Installateurs Windows NSIS & Portables) |
 
-Prérequis : **Node.js ≥ 18** et **npm**.
+---
 
+## 💻 Installation & Développement
+
+### Prérequis
+* **Node.js** ≥ 18.x
+* **npm** ou **yarn**
+* Windows 10 ou 11
+
+### 1. Cloner le projet
+```bash
+git clone https://github.com/aikaazuna/Serenity.git
+cd Serenity
+```
+
+### 2. Installer les dépendances
 ```bash
 npm install
 ```
 
-### Lancer en développement
-
-```bash
-npm run dev            # démarre le serveur Vite (http://localhost:5173)
-# puis, dans un second terminal :
-npm run electron:dev   # lance Electron en pointant vers le serveur Vite
-```
-
-Ou en une seule commande (Vite + Electron orchestrés ensemble) :
-
+### 3. Lancer en mode développement
 ```bash
 npm run app:dev
 ```
+*Cette commande lance simultanément le serveur de dev Vite et le processus Electron.*
 
-## Scripts npm
+---
 
-| Script                  | Description                                                            |
-| ------------------------ | -------------------------------------------------------------------------- |
-| `npm run dev`             | Démarre le serveur de développement Vite (renderer)                      |
-| `npm run electron:dev`    | Lance Electron en mode développement (connecté au serveur Vite)          |
-| `npm run app:dev`         | Démarre Vite **et** Electron ensemble (`concurrently` + `wait-on`)        |
-| `npm run build`           | Typecheck + compile le main process + build de production du renderer   |
-| `npm run typecheck`       | Vérifie les types (renderer + main process) sans rien émettre           |
-| `npm run lint`            | ESLint (TypeScript strict, hooks React, imports inutilisés…)             |
-| `npm run pack`            | Build + package Electron **sans** installateur (dossier `release/*-unpacked`) |
-| `npm run dist`            | Build + génère l'installateur Windows **NSIS** (`.exe`)                  |
-| `npm run dist:portable`   | Build + génère un exécutable **portable** Windows (sans installation)    |
+## 📦 Compilation & Exportation (.exe)
 
-## Build & installateur Windows
+Pour générer les exécutables Windows autonomes :
 
 ```bash
-npm run dist            # release/ColorFlow-Setup-<version>.exe (installateur NSIS)
-npm run dist:portable    # release/ColorFlow-Portable-<version>.exe (portable)
+# Générer l'installateur complet NSIS (.exe)
+npm run dist
+
+# Générer la version portable sans installation (.exe)
+npm run dist:portable
+
+# Générer les deux formats à la fois
+npm run dist:all
 ```
 
-Configuration dans `package.json` (`"build"`) :
+Les exécutables générés seront disponibles dans le répertoire `release/` :
+* `release/SerenityHub-Setup-1.0.0.exe` (Installateur standard)
+* `release/SerenityHub-Portable-1.0.0.exe` (Exécutable portable direct)
 
-- Icône multi-résolutions `build/icon.ico` (16 → 256 px), générée automatiquement
-  depuis `logo.png` via `node scripts/generate-icons.mjs`.
-- Cible `nsis` : installateur avec choix du dossier d'installation, raccourcis
-  Bureau/Menu Démarrer.
-- Cible `portable` : exécutable unique, aucune installation requise.
-- `asar: true` pour empaqueter le code applicatif.
+---
 
-> Le build croisé Windows depuis Linux/macOS fonctionne (testé avec `wine` +
-> `wine32:i386` installés). Sous Windows, `npm run dist` fonctionne nativement
-> sans dépendance supplémentaire.
+## ⌨️ Raccourcis Clavier
 
-## Fonctionnalités
+| Raccourci | Action |
+|---|---|
+| `Ctrl + Shift + C` | Lancer la pipette et la loupe système (global) |
+| `Ctrl + K` | Ouvrir la palette de commandes globale |
+| `Échap` (`Esc`) | Fermer la pipette / fermer une modale |
+| `Ctrl + R` | Rafraîchir l'application en mode développement |
 
-- **Pipette système multi-écrans** avec loupe zoomée, raccourci global configurable,
-  échantillonnage pixel exact (aucune perte de précision entre écrans capturés).
-- **8 formats de couleur** : HEX, RGB, RGBA, HSL, HSV, CMYK, LAB, OKLCH — copie en un clic.
-- **Formats développeurs** : CSS, CSS Variable, Tailwind, Flutter, SwiftUI, Android XML, SCSS.
-- **Générateur de palettes** : monochrome, analogue, complémentaire, split-complémentaire,
-  triadique, tétradique — export JSON / CSS Variables / Tailwind / SCSS / PNG.
-- **Analyse de contraste WCAG** (AA/AAA, normal/large) avec recommandation texte noir/blanc.
-- **Historique** local (recherche, tri, suppression, favoris) et **Favoris** organisés en
-  collections (créer / renommer / supprimer / exporter).
-- **Recherche globale** (`Ctrl+K`) : HEX, noms de couleurs CSS, historique.
-- **Barre système** : ouvrir l'app, lancer la pipette, quitter.
-- **Paramètres** : raccourci clavier, démarrage avec Windows, thème clair/sombre/système,
-  animations activées/désactivées, format de copie par défaut, langue.
-- **Notifications internes animées** (pas de notifications Windows natives).
+---
 
-## Raccourcis clavier
+## 📄 Licence
 
-| Raccourci                 | Action                          |
-| --------------------------- | ---------------------------------- |
-| `Ctrl+Shift+C` (configurable) | Lancer la pipette (global, même en arrière-plan) |
-| `Ctrl+K`                     | Recherche globale                 |
-| `Échap`                      | Annuler la pipette / fermer un panneau |
-| `Entrée`                      | Valider un champ HEX              |
+Ce projet est distribué sous licence libre **MIT**. Consultez le fichier [LICENSE](LICENSE) pour plus d'informations.
+
+---
+
+<div align="center">
+  Créé avec passion par <a href="https://github.com/aikaazuna"><strong>aikaazuna</strong></a>.
+</div>
