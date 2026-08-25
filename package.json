@@ -71,7 +71,7 @@
   },
   "build": {
     "appId": "com.serenityhub.app",
-    "productName": "SerenityHub",
+    "productName": "Serenity Hub",
     "copyright": "Copyright © 2026 Serenity Hub",
     "asar": true,
     "publish": null,
@@ -90,6 +90,7 @@
     "extraMetadata": {
       "main": "dist-electron/electron/main.js"
     },
+    "afterPack": "scripts/after-pack.cjs",
     "win": {
       "target": [
         {
@@ -106,7 +107,7 @@
         }
       ],
       "icon": "build/icon.ico",
-      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "artifactName": "SerenityHub-Setup-${version}.${ext}",
       "signAndEditExecutable": false
     },
     "nsis": {
@@ -115,11 +116,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ColorFlow",
+      "shortcutName": "Serenity Hub",
       "differentialPackage": false
     },
     "portable": {
-      "artifactName": "${productName}-Portable-${version}.${ext}"
+      "artifactName": "SerenityHub-Portable-${version}.${ext}"
     }
   }
 }

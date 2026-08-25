@@ -1,5 +1,6 @@
 import React from "react";
 import { useAudioStore } from "@/state/audioStore";
+import { useI18n } from "@/hooks/useI18n";
 import { EQEngine } from "@/lib/eq-engine";
 import {
   Minus,
@@ -16,6 +17,7 @@ export const GraphicEQ: React.FC = () => {
   const graphicFilters = useAudioStore((s) => s.graphicFilters) || {};
   const setGraphicFilter = useAudioStore((s) => s.setGraphicFilter);
   const quickCurveAction = useAudioStore((s) => s.quickCurveAction);
+  const t = useI18n();
 
   const frequencies = EQEngine.getBands(graphicBands);
 
@@ -33,7 +35,7 @@ export const GraphicEQ: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--card-border)] pb-3">
         {/* Band Count Segmented Control */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-secondary">Bandes :</span>
+          <span className="text-xs font-semibold text-secondary">{t.graphicEqUI.bands}</span>
           <div className="apple-inner-box flex items-center p-1 rounded-xl gap-1">
             {[5, 10, 15, 20, 31].map((b) => (
               <button
@@ -56,55 +58,55 @@ export const GraphicEQ: React.FC = () => {
           <button
             onClick={() => quickCurveAction("flat")}
             className="apple-inner-box flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-secondary hover:text-[color:var(--text-primary)] transition cursor-pointer"
-            title="Réinitialiser tous les gains à 0 dB"
+            title={t.graphicEqUI.flatDesc}
           >
             <Minus className="h-3 w-3" />
-            <span>Plat (0 dB)</span>
+            <span>{t.graphicEqUI.flat}</span>
           </button>
 
           <button
             onClick={() => quickCurveAction("v-shape")}
             className="apple-inner-box flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-secondary hover:text-[color:var(--text-primary)] transition cursor-pointer"
-            title="Creuser les médiums et booster basses/aigus"
+            title={t.graphicEqUI.vShapeDesc}
           >
             <TrendingUp className="h-3 w-3 text-cyan-500" />
-            <span>V-Shape</span>
+            <span>{t.graphicEqUI.vShape}</span>
           </button>
 
           <button
             onClick={() => quickCurveAction("bass")}
             className="apple-inner-box flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-secondary hover:text-[color:var(--text-primary)] transition cursor-pointer"
-            title="Amplification progressive des basses"
+            title={t.graphicEqUI.bassDesc}
           >
             <Volume2 className="h-3 w-3 text-[#0A84FF]" />
-            <span>Basses</span>
+            <span>{t.graphicEqUI.bass}</span>
           </button>
 
           <button
             onClick={() => quickCurveAction("treble")}
             className="apple-inner-box flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-secondary hover:text-[color:var(--text-primary)] transition cursor-pointer"
-            title="Amplification des hautes fréquences"
+            title={t.graphicEqUI.trebleDesc}
           >
             <Sparkles className="h-3 w-3 text-amber-500" />
-            <span>Aigus</span>
+            <span>{t.graphicEqUI.treble}</span>
           </button>
 
           <button
             onClick={() => quickCurveAction("smooth")}
             className="apple-inner-box flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-secondary hover:text-[color:var(--text-primary)] transition cursor-pointer"
-            title="Lisser la courbe"
+            title={t.graphicEqUI.smoothDesc}
           >
             <Waves className="h-3 w-3 text-emerald-500" />
-            <span>Lisser</span>
+            <span>{t.graphicEqUI.smooth}</span>
           </button>
 
           <button
             onClick={() => quickCurveAction("invert")}
             className="apple-inner-box flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-secondary hover:text-[color:var(--text-primary)] transition cursor-pointer"
-            title="Inverser les gains de la courbe"
+            title={t.graphicEqUI.invertDesc}
           >
             <RefreshCw className="h-3 w-3 text-purple-500" />
-            <span>Inverser</span>
+            <span>{t.graphicEqUI.invert}</span>
           </button>
         </div>
       </div>

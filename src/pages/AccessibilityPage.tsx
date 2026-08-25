@@ -16,17 +16,6 @@ type DeficiencyType =
   | 'tritanomaly'
   | 'achromatopsia';
 
-const DEFICIENCIES: { id: DeficiencyType; name: string; desc: string; prevalence: string }[] = [
-  { id: 'normal', name: '{t.accessibility.visionStandard}', desc: 'Perception normale de toutes les longueurs d’onde.', prevalence: '92%' },
-  { id: 'deuteranomaly', name: '{t.accessibility.deuteranomaly}', desc: '{t.accessibility.deuteranomalyDesc}', prevalence: '5% ♂' },
-  { id: 'deuteranopia', name: '{t.accessibility.deuteranopia}', desc: '{t.accessibility.deuteranopiaDesc}', prevalence: '1% ♂' },
-  { id: 'protanomaly', name: '{t.accessibility.protanomaly}', desc: '{t.accessibility.protanomalyDesc}', prevalence: '1% ♂' },
-  { id: 'protanopia', name: 'Protanopie', desc: 'Absence totale de cônes rouges.', prevalence: '1% ♂' },
-  { id: 'tritanomaly', name: 'Tritanomalie', desc: 'Sensibilité réduite au bleu/jaune.', prevalence: '< 0.1%' },
-  { id: 'tritanopia', name: 'Tritanopie', desc: 'Absence totale de cônes bleus.', prevalence: '< 0.1%' },
-  { id: 'achromatopsia', name: 'Achromatopsie', desc: 'Absence totale de vision des couleurs (monochrome).', prevalence: '0.003%' },
-];
-
 function simulateColorDeficiency(hex: string, type: DeficiencyType): string {
   if (type === 'normal') return hex;
   const { r, g, b } = hexToRgb(hex);
@@ -75,6 +64,17 @@ export const AccessibilityPage: React.FC = () => {
   const color = useColorSnapshot(activeColorHex);
   const [selectedDeficiency, setSelectedDeficiency] = useState<DeficiencyType>('normal');
 
+  const deficiencies: { id: DeficiencyType; name: string; desc: string; prevalence: string }[] = [
+    { id: 'normal', name: t.accessibility.visionStandard, desc: t.accessibility.visionStandardDesc, prevalence: '92%' },
+    { id: 'deuteranomaly', name: t.accessibility.deuteranomaly, desc: t.accessibility.deuteranomalyDesc, prevalence: '5% ♂' },
+    { id: 'deuteranopia', name: t.accessibility.deuteranopia, desc: t.accessibility.deuteranopiaDesc, prevalence: '1% ♂' },
+    { id: 'protanomaly', name: t.accessibility.protanomaly, desc: t.accessibility.protanomalyDesc, prevalence: '1% ♂' },
+    { id: 'protanopia', name: t.accessibility.protanopia, desc: t.accessibility.protanopiaDesc, prevalence: '1% ♂' },
+    { id: 'tritanomaly', name: t.accessibility.tritanomaly, desc: t.accessibility.tritanomalyDesc, prevalence: '< 0.1%' },
+    { id: 'tritanopia', name: t.accessibility.tritanopia, desc: t.accessibility.tritanopiaDesc, prevalence: '< 0.1%' },
+    { id: 'achromatopsia', name: t.accessibility.achromatopsia, desc: t.accessibility.achromatopsiaDesc, prevalence: '0.003%' },
+  ];
+
   if (!color) return null;
 
   const contrast = analyzeContrast(color.rgb);
@@ -95,7 +95,7 @@ export const AccessibilityPage: React.FC = () => {
         <div className="apple-card p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-[color:var(--card-border)] pb-3">
             <h3 className="text-xs font-bold text-[color:var(--text-primary)] uppercase tracking-wider">
-              Ratio de Contraste WCAG 2.1
+              {t.accessibility.ratio}
             </h3>
             <span className="apple-inner-box text-sm font-mono font-bold text-[color:var(--text-primary)] px-2.5 py-0.5 rounded-lg">
               {contrast.ratio}:1
@@ -107,7 +107,7 @@ export const AccessibilityPage: React.FC = () => {
               <span className="text-secondary font-medium">{t.accessibility.normalTextAA} (min 4.5:1)</span>
               <span className={`flex items-center gap-1 font-bold ${contrast.aaNormal ? 'text-emerald-500' : 'text-red-500'}`}>
                 {contrast.aaNormal ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
-                {contrast.aaNormal ? '{t.accessibility.pass}' : '{t.accessibility.fail}'}
+                {contrast.aaNormal ? t.accessibility.pass : t.accessibility.fail}
               </span>
             </div>
 
@@ -115,23 +115,23 @@ export const AccessibilityPage: React.FC = () => {
               <span className="text-secondary font-medium">{t.accessibility.largeTextAA} (min 3.0:1)</span>
               <span className={`flex items-center gap-1 font-bold ${contrast.aaLarge ? 'text-emerald-500' : 'text-red-500'}`}>
                 {contrast.aaLarge ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
-                {contrast.aaLarge ? '{t.accessibility.pass}' : '{t.accessibility.fail}'}
+                {contrast.aaLarge ? t.accessibility.pass : t.accessibility.fail}
               </span>
             </div>
 
             <div className="apple-inner-box flex items-center justify-between p-2.5">
-              <span className="text-secondary font-medium">{t.accessibility.normalTextAA}A (min 7.0:1)</span>
+              <span className="text-secondary font-medium">{t.accessibility.normalTextAAA} (min 7.0:1)</span>
               <span className={`flex items-center gap-1 font-bold ${contrast.aaaNormal ? 'text-emerald-500' : 'text-red-500'}`}>
                 {contrast.aaaNormal ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
-                {contrast.aaaNormal ? '{t.accessibility.pass}' : '{t.accessibility.fail}'}
+                {contrast.aaaNormal ? t.accessibility.pass : t.accessibility.fail}
               </span>
             </div>
 
             <div className="apple-inner-box flex items-center justify-between p-2.5">
-              <span className="text-secondary font-medium">{t.accessibility.largeTextAA}A (min 4.5:1)</span>
+              <span className="text-secondary font-medium">{t.accessibility.largeTextAAA} (min 4.5:1)</span>
               <span className={`flex items-center gap-1 font-bold ${contrast.aaaLarge ? 'text-emerald-500' : 'text-red-500'}`}>
                 {contrast.aaaLarge ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
-                {contrast.aaaLarge ? '{t.accessibility.pass}' : '{t.accessibility.fail}'}
+                {contrast.aaaLarge ? t.accessibility.pass : t.accessibility.fail}
               </span>
             </div>
           </div>
@@ -140,7 +140,7 @@ export const AccessibilityPage: React.FC = () => {
         <div className="lg:col-span-2 apple-card p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-[color:var(--card-border)] pb-3">
             <h3 className="text-xs font-bold text-[color:var(--text-primary)] uppercase tracking-wider">
-              Aperçu Composants UI avec Simulation
+              {t.accessibility.preview}
             </h3>
             <span className="text-xs font-mono font-bold text-[#0A84FF]">
               {simulatedColor.toUpperCase()}
@@ -200,13 +200,13 @@ export const AccessibilityPage: React.FC = () => {
       <div className="apple-card p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-[color:var(--card-border)] pb-3">
           <h3 className="text-xs font-bold text-[color:var(--text-primary)] uppercase tracking-wider">
-            Simulateur de Déficiences Visuelles (Daltonisme)
+            {t.accessibility.simulator}
           </h3>
           <span className="text-xs text-tertiary">{t.accessibility.selectAnomaly}</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {DEFICIENCIES.map((def) => {
+          {deficiencies.map((def) => {
             const previewHex = simulateColorDeficiency(activeColorHex, def.id);
             const isSelected = selectedDeficiency === def.id;
 

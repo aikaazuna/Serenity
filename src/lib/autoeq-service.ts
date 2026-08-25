@@ -155,13 +155,23 @@ export async function getAutoEqPreset(model: AutoEqModelEntry): Promise<AudioPre
   } catch {}
 
   // 4. Download on-demand from official AutoEq GitHub
-  const folderName = model.path.split('/').pop() || model.name;
-  const rawUrl = `https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results/${model.path}/${encodeURIComponent(
-    folderName
-  )}%20ParametricEQ.txt`;
+  const rawPath = decodeURIComponent(model.path);
+  const pathSegments = rawPath
+    .split("/")
+    .map((seg) => encodeURIComponent(seg))
+    .join("/");
+  const folderName = rawPath.split("/").pop() || model.name;
+  const fileName = `${encodeURIComponent(folderName)}%20ParametricEQ.txt`;
+  
+  const rawUrlMaster = `https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results/${pathSegments}/${fileName}`;
+  const rawUrlMain = `https://raw.githubusercontent.com/jaakkopasanen/AutoEq/main/results/${pathSegments}/${fileName}`;
 
   try {
-    const response = await fetch(rawUrl);
+    let response = await fetch(rawUrlMaster);
+    if (!response.ok && response.status === 404) {
+      response = await fetch(rawUrlMain);
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: Failed to download calibration`);
     }
@@ -188,21 +198,6 @@ export async function getAutoEqPreset(model: AutoEqModelEntry): Promise<AudioPre
     return preset;
   } catch (error) {
     console.error('Failed to download AutoEQ profile:', error);
-    // Fallback: Return clean neutral profile
-    return {
-      id: model.id,
-      name: model.name,
-      brand: model.brand,
-      category: 'autoeq',
-      author: `AutoEq (${model.source})`,
-      description: `Profil AutoEq pour ${model.name}.`,
-      mode: 'parametric',
-      preamp: 0,
-      parametricFilters: [
-        { id: '1', enabled: true, type: 'LS', freq: 80, gain: 0, q: 0.71 },
-        { id: '2', enabled: true, type: 'PK', freq: 1000, gain: 0, q: 1.41 },
-        { id: '3', enabled: true, type: 'HS', freq: 10000, gain: 0, q: 0.71 },
-      ],
-    };
+    throw error;
   }
 }

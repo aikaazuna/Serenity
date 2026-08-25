@@ -154,7 +154,7 @@ export function FavoritesPage() {
       <Dialog
         open={!!dialog}
         onOpenChange={(open) => !open && setDialog(null)}
-        title={dialog?.mode === "create" ? "{t.favorites.newCollection}" : "{t.favorites.renameCollection}"}
+        title={dialog?.mode === "create" ? t.favorites.newCollection : t.favorites.renameCollection}
       >
         <input
           autoFocus

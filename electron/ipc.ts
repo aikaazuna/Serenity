@@ -178,38 +178,47 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.AudioGetDevices, async () => {
     try {
-      const { stdout } = await execAsync(
-        'reg.exe query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Render" /s',
-        {
-          encoding: "utf8",
-          maxBuffer: 1024 * 1024 * 10,
+      // 1. Try registry query via PowerShell JSON output for 100% reliable UTF-8 decoding & friendly names
+      const psCommand = `powershell.exe -NoProfile -NonInteractive -Command "try { Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Render\\*\\Properties' -ErrorAction SilentlyContinue | ForEach-Object { $name = $_.'{a45c254e-df1c-4efd-8020-67d146a850e0},2'; $desc = $_.'{b3f8fa53-0004-438e-9003-51a46e139bfc},6'; if ($name) { if ($desc -and $desc -ne $name) { \\\"$name ($desc)\\\" } else { \\\"$name\\\" } } } | Sort-Object -Unique | ConvertTo-Json -Compress } catch { @() }"`;
+      
+      let foundNames: string[] = [];
+      try {
+        const { stdout } = await execAsync(psCommand, { encoding: "utf8", timeout: 4000 });
+        if (stdout && stdout.trim()) {
+          const parsed = JSON.parse(stdout.trim());
+          if (Array.isArray(parsed)) foundNames = parsed.filter(Boolean);
+          else if (typeof parsed === "string" && parsed.trim()) foundNames = [parsed.trim()];
         }
-      );
-
-      const sections = stdout.split(/HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Render\\[^\\]+\\Properties/i);
-      const devices = [{ name: "Toutes les sorties audio", isInstalled: true }];
-      const foundNames: string[] = [];
-
-      for (const section of sections) {
-        const nameMatch = section.match(/\{a45c254e-df1c-4efd-8020-67d146a850e0\},2\s+REG_SZ\s+([^\r\n]+)/i);
-        const descMatch = section.match(/\{b3f8fa53-0004-438e-9003-51a46e139bfc\},6\s+REG_SZ\s+([^\r\n]+)/i);
-
-        if (nameMatch && nameMatch[1]) {
-          const name = nameMatch[1].trim();
-          const desc = descMatch && descMatch[1] ? descMatch[1].trim() : "";
-          const displayName = desc && desc !== name ? `${name} (${desc})` : name;
-          foundNames.push(displayName);
-        }
+      } catch (err) {
+        console.warn("PowerShell registry device query failed, trying Win32_SoundDevice fallback", err);
       }
 
+      if (foundNames.length === 0) {
+        // Fallback to Win32_SoundDevice
+        try {
+          const { stdout: soundStdout } = await execAsync(
+            `powershell.exe -NoProfile -NonInteractive -Command "Get-CimInstance Win32_SoundDevice -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name | Sort-Object -Unique | ConvertTo-Json -Compress"`,
+            { encoding: "utf8", timeout: 3000 }
+          );
+          if (soundStdout && soundStdout.trim()) {
+            const parsedSound = JSON.parse(soundStdout.trim());
+            if (Array.isArray(parsedSound)) foundNames = parsedSound.filter(Boolean);
+            else if (typeof parsedSound === "string" && parsedSound.trim()) foundNames = [parsedSound.trim()];
+          }
+        } catch {}
+      }
+
+      const devices = [{ name: "Toutes les sorties audio", isInstalled: true }];
       const unique = Array.from(new Set(foundNames)).sort();
       for (const d of unique) {
-        devices.push({ name: d, isInstalled: true });
+        if (d && typeof d === "string" && d.trim()) {
+          devices.push({ name: d.trim(), isInstalled: true });
+        }
       }
 
       return devices;
     } catch (e) {
-      console.error("Failed to get audio devices via reg.exe", e);
+      console.error("Failed to get audio devices", e);
       return [{ name: "Toutes les sorties audio", isInstalled: true }];
     }
   });

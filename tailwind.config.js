@@ -21,7 +21,7 @@ export default {
       },
       fontFamily: {
         sans: [
-          "Space Grotesk",
+          "Plus Jakarta Sans",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI Variable",
@@ -32,6 +32,7 @@ export default {
           "sans-serif",
         ],
         mono: [
+          "JetBrains Mono",
           "ui-monospace",
           "SFMono-Regular",
           "Consolas",

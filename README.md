@@ -41,7 +41,7 @@ Serenity Hub, c'est deux outils dans la même appli :
 
 ### Interface
 
-- Thème glassmorphism, police Space Grotesk, animations Framer Motion.
+- Thème glassmorphism, typographie Plus Jakarta Sans & JetBrains Mono, animations Framer Motion.
 - Palette de commandes (`Ctrl+K`) pour naviguer vite entre les outils et les presets.
 - Français / anglais, bascule instantanée.
 - Mise à jour automatique via GitHub Releases.
@@ -124,6 +124,11 @@ Les binaires sortent dans `release/` :
 | `Ctrl + K` | Ouvrir la palette de commandes |
 | `Échap` | Fermer la pipette ou une modale |
 | `Ctrl + R` | Rafraîchir l'appli en dev |
+
+## Crédits
+
+- **Luoxthedev** – Créateur du base du color‑picker utilisé dans le projet (https://github.com/luoxthedev/color-picker).
+- **aikaazuna** – Hébergeur du dépôt et mainteneur du projet.
 
 ## Licence
 

@@ -142,7 +142,9 @@ writeFileSync(join(resourcesDir, "logo.png"), fullCropped);
 const icoSizes = [16, 24, 32, 48, 64, 128, 256];
 const icoBuffers = await Promise.all(icoSizes.map((size) => resizePng(markCropped, size)));
 
-writeFileSync(join(buildDir, "icon.ico"), await pngToIco(icoBuffers));
+const icoData = await pngToIco(icoBuffers);
+writeFileSync(join(buildDir, "icon.ico"), icoData);
+writeFileSync(join(resourcesDir, "icon.ico"), icoData);
 writeFileSync(join(buildDir, "icon.png"), await resizePng(markCropped, 512));
 writeFileSync(join(resourcesDir, "app-icon-256.png"), await resizePng(markCropped, 256));
 writeFileSync(join(assetsDir, "logo-mark.png"), await resizePng(markCropped, 256));

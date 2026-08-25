@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { BrowserWindow, shell } from "electron";
 import {
   isDev,
@@ -24,6 +25,7 @@ export function createMainWindow(): BrowserWindow {
     height: MAIN_WINDOW_HEIGHT,
     minWidth: MAIN_WINDOW_MIN_WIDTH,
     minHeight: MAIN_WINDOW_MIN_HEIGHT,
+    title: "Serenity Hub",
     show: false,
     frame: false,
     transparent: true,
@@ -31,7 +33,10 @@ export function createMainWindow(): BrowserWindow {
     hasShadow: true,
     titleBarStyle: "hidden",
     autoHideMenuBar: true,
-    icon: resourcePath("app-icon-256.png"),
+    icon:
+      process.platform === "win32" && existsSync(resourcePath("icon.ico"))
+        ? resourcePath("icon.ico")
+        : resourcePath("app-icon-256.png"),
     webPreferences: {
       preload: preloadScriptPath(),
       contextIsolation: true,

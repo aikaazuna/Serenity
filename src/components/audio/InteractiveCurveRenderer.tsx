@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useAudioStore } from "@/state/audioStore";
+import { useI18n } from "@/hooks/useI18n";
 import { EQEngine } from "@/lib/eq-engine";
 import { Activity } from "lucide-react";
 
@@ -21,10 +22,29 @@ export const InteractiveCurveRenderer: React.FC = () => {
   const audioState = useAudioStore();
   const updateParametricFilter = useAudioStore((s) => s.updateParametricFilter);
   const addParametricFilter = useAudioStore((s) => s.addParametricFilter);
+  const t = useI18n();
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 240 });
   const [hoveredNode, setHoveredNode] = useState<number | null>(null);
   const [draggedNode, setDraggedNode] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setDimensions({
+            width: Math.round(entry.contentRect.width),
+            height: 240,
+          });
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const freqToX = useCallback((freq: number, width: number) => {
     const usableW = Math.max(10, width - PAD_X * 2);
@@ -65,8 +85,20 @@ export const InteractiveCurveRenderer: React.FC = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const width = canvas.width || 800;
-    const height = canvas.height || 240;
+    const targetW = dimensions.width || containerRef.current?.clientWidth || 800;
+    const targetH = 240;
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = Math.round(targetW * dpr);
+    canvas.height = Math.round(targetH * dpr);
+    canvas.style.width = `${targetW}px`;
+    canvas.style.height = `${targetH}px`;
+
+    ctx.resetTransform?.();
+    ctx.scale(dpr, dpr);
+
+    const width = targetW;
+    const height = targetH;
 
     const isLight = document.documentElement.classList.contains("light");
 
@@ -76,11 +108,9 @@ export const InteractiveCurveRenderer: React.FC = () => {
     const zeroColor = isLight ? "rgba(0, 122, 255, 0.45)" : "rgba(10, 132, 255, 0.45)";
     const curveColor = isLight ? "#007AFF" : "#0A84FF";
 
-    // Canvas background
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
 
-    // Vertical Frequency Grid Lines & Labels
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
 
@@ -109,7 +139,6 @@ export const InteractiveCurveRenderer: React.FC = () => {
       ctx.fillText(label, gx, height - 6);
     });
 
-    // Horizontal dB Grid Lines & Labels
     const dBGrids = [18, 12, 6, 0, -6, -12, -18];
     dBGrids.forEach((g) => {
       const gy = gainToY(g, height);
@@ -134,7 +163,6 @@ export const InteractiveCurveRenderer: React.FC = () => {
       ctx.fillText(`${g > 0 ? "+" : ""}${g} dB`, 6, gy + 3);
     });
 
-    // Compute curve points (preamp = 0 so the filter curve aligns with filter nodes!)
     const points: { x: number; y: number }[] = [];
     const sampleCount = 320;
     const zeroY = gainToY(0, height);
@@ -145,7 +173,7 @@ export const InteractiveCurveRenderer: React.FC = () => {
       const totalGain = EQEngine.calculateCombinedResponse(
         audioState?.parametricFilters || [],
         freq,
-        0, // Always 0 here so the curve passes right through the filter control points!
+        0,
         audioState?.bassBoost ?? 0,
         audioState?.trebleAir ?? 0,
         audioState?.graphicFilters || {},
@@ -155,120 +183,166 @@ export const InteractiveCurveRenderer: React.FC = () => {
       points.push({ x, y });
     }
 
-    // Fill under curve
     if (points.length > 0 && points[0]) {
-      const grad = ctx.createLinearGradient(0, PAD_Y, 0, height);
+      const gradient = ctx.createLinearGradient(0, PAD_Y, 0, height - PAD_Y);
       if (isLight) {
-        grad.addColorStop(0, "rgba(0, 122, 255, 0.18)");
-        grad.addColorStop(0.6, "rgba(94, 92, 230, 0.06)");
-        grad.addColorStop(1, "rgba(0, 122, 255, 0.0)");
+        gradient.addColorStop(0, "rgba(0, 122, 255, 0.16)");
+        gradient.addColorStop(0.5, "rgba(0, 122, 255, 0.04)");
+        gradient.addColorStop(1, "rgba(0, 122, 255, 0.16)");
       } else {
-        grad.addColorStop(0, "rgba(10, 132, 255, 0.35)");
-        grad.addColorStop(0.6, "rgba(94, 92, 230, 0.12)");
-        grad.addColorStop(1, "rgba(10, 132, 255, 0.0)");
+        gradient.addColorStop(0, "rgba(10, 132, 255, 0.28)");
+        gradient.addColorStop(0.5, "rgba(10, 132, 255, 0.06)");
+        gradient.addColorStop(1, "rgba(10, 132, 255, 0.28)");
       }
 
       ctx.beginPath();
       ctx.moveTo(points[0].x, zeroY);
       points.forEach((pt) => ctx.lineTo(pt.x, pt.y));
-      ctx.lineTo(points[points.length - 1]!.x, zeroY);
+      const lastPt = points[points.length - 1];
+      if (lastPt) {
+        ctx.lineTo(lastPt.x, zeroY);
+      }
       ctx.closePath();
-      ctx.fillStyle = grad;
+      ctx.fillStyle = gradient;
       ctx.fill();
+    }
 
-      // Main glow curve
-      ctx.shadowColor = isLight ? "rgba(0, 122, 255, 0.35)" : "rgba(10, 132, 255, 0.60)";
-      ctx.shadowBlur = isLight ? 4 : 8;
+    if (points.length > 0 && points[0]) {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        const pt = points[i];
+        if (pt) ctx.lineTo(pt.x, pt.y);
+      }
       ctx.strokeStyle = curveColor;
       ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      points.forEach((pt, idx) => {
-        if (idx === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      });
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       ctx.stroke();
-      ctx.shadowBlur = 0;
     }
 
-    // Draw draggable filter nodes in parametric mode
-    if (audioState?.mode === "parametric" && Array.isArray(audioState?.parametricFilters)) {
-      audioState.parametricFilters.forEach((f, idx) => {
-        if (!f || !f.enabled) return;
-        const nx = freqToX(f.freq || 1000, width);
-        const ny = gainToY(f.gain || 0, height);
-        const isHover = hoveredNode === idx || draggedNode === idx;
-        const color = NODE_COLORS[idx % NODE_COLORS.length];
+    if (audioState?.mode === "parametric" && Array.isArray(audioState.parametricFilters)) {
+      audioState.parametricFilters.forEach((filter, index) => {
+        if (!filter || !filter.enabled) return;
+
+        const nx = freqToX(filter.freq || 1000, width);
+        const ny = gainToY(filter.gain || 0, height);
+        const isHovered = hoveredNode === index;
+        const isDragged = draggedNode === index;
+        const color = NODE_COLORS[index % NODE_COLORS.length] || "#0A84FF";
+
+        if (isHovered || isDragged) {
+          const qVal = filter.q ?? 1.41;
+          const bwOctaves = 2 * Math.asinh(1 / (2 * qVal)) / Math.LN2;
+          const fLow = (filter.freq || 1000) * Math.pow(2, -bwOctaves / 2);
+          const fHigh = (filter.freq || 1000) * Math.pow(2, bwOctaves / 2);
+          const xLow = freqToX(fLow, width);
+          const xHigh = freqToX(fHigh, width);
+
+          ctx.fillStyle = `${color}18`;
+          ctx.fillRect(Math.min(xLow, xHigh), PAD_Y, Math.abs(xHigh - xLow), height - PAD_Y * 2);
+
+          ctx.strokeStyle = `${color}60`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(xLow, PAD_Y);
+          ctx.lineTo(xLow, height - PAD_Y);
+          ctx.moveTo(xHigh, PAD_Y);
+          ctx.lineTo(xHigh, height - PAD_Y);
+          ctx.stroke();
+        }
 
         ctx.beginPath();
-        ctx.arc(nx, ny, isHover ? 7.5 : 5.5, 0, Math.PI * 2);
-        ctx.fillStyle = color || "#0A84FF";
-        ctx.fill();
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2;
+        ctx.moveTo(nx, zeroY);
+        ctx.lineTo(nx, ny);
+        ctx.strokeStyle = isHovered || isDragged ? color : `${color}80`;
+        ctx.lineWidth = isHovered || isDragged ? 1.5 : 1;
         ctx.stroke();
 
-        ctx.fillStyle = isLight ? "#1c1c1e" : "#ffffff";
-        ctx.font = "bold 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+        if (isHovered || isDragged) {
+          ctx.beginPath();
+          ctx.arc(nx, ny, 11, 0, Math.PI * 2);
+          ctx.fillStyle = `${color}35`;
+          ctx.fill();
+        }
+
+        ctx.beginPath();
+        ctx.arc(nx, ny, isHovered || isDragged ? 6.5 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = textColor;
+        ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace";
         ctx.textAlign = "center";
-        ctx.fillText(String(idx + 1), nx, ny - 9);
+        const badgeY = ny < PAD_Y + 14 ? ny + 14 : ny - 9;
+        ctx.fillText(`${index + 1}`, nx, badgeY);
       });
     }
-  }, [audioState, hoveredNode, draggedNode, freqToX, xToFreq, gainToY]);
+  }, [
+    dimensions.width,
+    audioState,
+    hoveredNode,
+    draggedNode,
+    freqToX,
+    xToFreq,
+    gainToY,
+  ]);
+
+  const getNodeAtPos = (clientX: number, clientY: number): number | null => {
+    const canvas = canvasRef.current;
+    if (!canvas || !audioState?.parametricFilters) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
+    const width = dimensions.width || rect.width;
+    const height = 240;
+
+    for (let i = 0; i < audioState.parametricFilters.length; i++) {
+      const f = audioState.parametricFilters[i];
+      if (!f || !f.enabled) continue;
+      const nx = freqToX(f.freq || 1000, width);
+      const ny = gainToY(f.gain || 0, height);
+      const dist = Math.hypot(mouseX - nx, mouseY - ny);
+      if (dist <= 14) return i;
+    }
+    return null;
+  };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-
-    const mouseX = ((e.clientX - rect.left) / rect.width) * canvas.width;
-    const mouseY = ((e.clientY - rect.top) / rect.height) * canvas.height;
-
-    if (audioState?.mode === "parametric" && Array.isArray(audioState?.parametricFilters)) {
-      let foundIndex = -1;
-      audioState.parametricFilters.forEach((f, idx) => {
-        if (!f) return;
-        const nx = freqToX(f.freq || 1000, canvas.width);
-        const ny = gainToY(f.gain || 0, canvas.height);
-        const dist = Math.hypot(mouseX - nx, mouseY - ny);
-        if (dist < 18) {
-          foundIndex = idx;
-        }
-      });
-
-      if (foundIndex !== -1) {
-        setDraggedNode(foundIndex);
-      }
+    if (audioState?.mode !== "parametric") return;
+    const nodeIdx = getNodeAtPos(e.clientX, e.clientY);
+    if (nodeIdx !== null) {
+      setDraggedNode(nodeIdx);
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (audioState?.mode !== "parametric") return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
-    const mouseX = ((e.clientX - rect.left) / rect.width) * canvas.width;
-    const mouseY = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const width = dimensions.width || rect.width;
+    const height = 240;
 
-    if (draggedNode !== null && audioState?.mode === "parametric") {
-      const newFreq = Math.round(xToFreq(mouseX, canvas.width));
-      const newGain = parseFloat(yToGain(mouseY, canvas.height).toFixed(1));
-      updateParametricFilter(draggedNode, { freq: newFreq, gain: newGain });
-      return;
-    }
-
-    if (audioState?.mode === "parametric" && Array.isArray(audioState?.parametricFilters)) {
-      let foundIndex = -1;
-      audioState.parametricFilters.forEach((f, idx) => {
-        if (!f) return;
-        const nx = freqToX(f.freq || 1000, canvas.width);
-        const ny = gainToY(f.gain || 0, canvas.height);
-        if (Math.hypot(mouseX - nx, mouseY - ny) < 18) {
-          foundIndex = idx;
-        }
+    if (draggedNode !== null) {
+      const newFreq = Math.round(xToFreq(mouseX, width));
+      const newGain = parseFloat(yToGain(mouseY, height).toFixed(1));
+      updateParametricFilter(draggedNode, {
+        freq: Math.max(20, Math.min(20000, newFreq)),
+        gain: Math.max(-20, Math.min(20, newGain)),
       });
-      setHoveredNode(foundIndex !== -1 ? foundIndex : null);
+    } else {
+      const nodeIdx = getNodeAtPos(e.clientX, e.clientY);
+      setHoveredNode(nodeIdx);
     }
   };
 
@@ -295,15 +369,17 @@ export const InteractiveCurveRenderer: React.FC = () => {
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
-    const mouseX = ((e.clientX - rect.left) / rect.width) * canvas.width;
-    const mouseY = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const width = dimensions.width || rect.width;
+    const height = 240;
 
     if (audioState?.mode === "parametric") {
       if (hoveredNode !== null) {
         updateParametricFilter(hoveredNode, { gain: 0 });
       } else {
-        const f = Math.round(xToFreq(mouseX, canvas.width));
-        const g = parseFloat(yToGain(mouseY, canvas.height).toFixed(1));
+        const f = Math.round(xToFreq(mouseX, width));
+        const g = parseFloat(yToGain(mouseY, height).toFixed(1));
         addParametricFilter({ freq: f, gain: g, type: "PK", q: 1.41 });
       }
     }
@@ -315,20 +391,21 @@ export const InteractiveCurveRenderer: React.FC = () => {
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-[#0A84FF]" />
           <h3 className="text-xs font-bold text-[color:var(--text-primary)] uppercase tracking-wider">
-            Courbe de Réponse Fréquentielle Interactive
+            {t.audioCurve.title}
           </h3>
         </div>
         <span className="text-[11px] text-tertiary font-mono">
-          Échelle logarithmique 20 Hz – 20 kHz (±20 dB)
+          {t.audioCurve.scale}
         </span>
       </div>
 
       <div className="apple-inner-box p-3 sm:p-3.5 rounded-2xl">
-        <div className="relative w-full rounded-xl overflow-hidden border border-[color:var(--card-border-inner)] shadow-inner">
+        <div
+          ref={containerRef}
+          className="relative w-full rounded-xl overflow-hidden border border-[color:var(--card-border-inner)] shadow-inner"
+        >
           <canvas
             ref={canvasRef}
-            width={800}
-            height={240}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -342,13 +419,12 @@ export const InteractiveCurveRenderer: React.FC = () => {
           />
         </div>
 
-        {/* Clean, spacious legend underneath */}
-        <div className="mt-2.5 flex items-center justify-center gap-4 text-[11px] text-tertiary">
-          <span><strong className="text-secondary font-medium">Glisser nœud :</strong> Fréquence / Gain</span>
-          <span>•</span>
-          <span><strong className="text-secondary font-medium">Molette :</strong> Facteur Q</span>
-          <span>•</span>
-          <span><strong className="text-secondary font-medium">Double-clic :</strong> Réinitialiser nœud</span>
+        <div className="mt-2.5 flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-[11px] text-tertiary">
+          <span><strong className="text-secondary font-medium">{t.audioCurve.dragNode}</strong> {t.audioCurve.dragNodeDesc}</span>
+          <span className="hidden sm:inline">•</span>
+          <span><strong className="text-secondary font-medium">{t.audioCurve.scrollQ}</strong> {t.audioCurve.scrollQDesc}</span>
+          <span className="hidden sm:inline">•</span>
+          <span><strong className="text-secondary font-medium">{t.audioCurve.doubleClickReset}</strong> {t.audioCurve.doubleClickResetDesc}</span>
         </div>
       </div>
     </div>

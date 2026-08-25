@@ -46,12 +46,6 @@ function emitError(message: string): void {
   sendToRenderer(IpcChannels.UpdaterOnError, { message });
 }
 
-function getAssetName(version: string): string {
-  return isPortableBuild()
-    ? `Serenity-Hub-Portable-${version}.exe`
-    : `Serenity-Hub-Setup-${version}.exe`;
-}
-
 interface GitHubReleaseAsset {
   name: string;
   size: number;
@@ -85,11 +79,44 @@ async function fetchLatestRelease(): Promise<GitHubRelease | null> {
 }
 
 function findAsset(release: GitHubRelease, version: string): GitHubReleaseAsset | undefined {
-  const assetName = getAssetName(version);
-  return (
-    release.assets.find((a) => a.name === assetName) ||
-    release.assets.find((a) => a.name.endsWith(".exe"))
-  );
+  const isPortable = isPortableBuild();
+  const candidates = isPortable
+    ? [
+        `SerenityHub-Portable-${version}.exe`,
+        `Serenity-Hub-Portable-${version}.exe`,
+        `SerenityHub-Portable.exe`,
+        `Portable-${version}.exe`,
+      ]
+    : [
+        `SerenityHub-Setup-${version}.exe`,
+        `Serenity-Hub-Setup-${version}.exe`,
+        `SerenityHub-Setup.exe`,
+        `Setup-${version}.exe`,
+      ];
+
+  for (const candidate of candidates) {
+    const match = release.assets.find(
+      (a) => a.name.toLowerCase() === candidate.toLowerCase()
+    );
+    if (match) return match;
+  }
+
+  if (isPortable) {
+    const port = release.assets.find(
+      (a) => a.name.toLowerCase().includes("portable") && a.name.endsWith(".exe")
+    );
+    if (port) return port;
+  } else {
+    const setup = release.assets.find(
+      (a) =>
+        (a.name.toLowerCase().includes("setup") ||
+          a.name.toLowerCase().includes("installer")) &&
+        a.name.endsWith(".exe")
+    );
+    if (setup) return setup;
+  }
+
+  return release.assets.find((a) => a.name.endsWith(".exe"));
 }
 
 export async function checkForUpdates(manual = false): Promise<UpdateCheckResult> {

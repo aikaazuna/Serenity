@@ -162,7 +162,7 @@ export const LibraryPage: React.FC = () => {
             <form onSubmit={handleCreateCollection} className="pt-2 border-t border-[color:var(--card-border)] space-y-2">
               <input
                 type="text"
-                placeholder="{t.colorLibrary.newFolder}"
+                placeholder={t.colorLibrary.newFolder}
                 value={newCollectionName}
                 onChange={(e) => setNewCollectionName(e.target.value)}
                 className="apple-inner-box w-full px-3 py-1.5 text-xs text-[color:var(--text-primary)] focus-ring rounded-xl"
@@ -182,7 +182,7 @@ export const LibraryPage: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-tertiary" />
               <input
                 type="text"
-                placeholder="{t.colorLibrary.filterHex}"
+                placeholder={t.colorLibrary.filterHex}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="apple-inner-box w-full pl-9 pr-3 py-1.5 text-xs text-[color:var(--text-primary)] focus-ring rounded-xl"

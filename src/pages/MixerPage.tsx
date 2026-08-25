@@ -1,145 +1,168 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   SlidersHorizontal,
-  Sparkles,
   Volume2,
+  VolumeX,
   Mic2,
   Gamepad2,
   Music,
   Headphones,
-  BellRing,
   CheckCircle2,
 } from "lucide-react";
-import { useAppStore } from "@/state/appStore";
 import { useI18n } from "@/hooks/useI18n";
 
 export const MixerPage: React.FC = () => {
-  const notify = useAppStore((s) => s.notify);
   const t = useI18n();
+
+  const [tracks, setTracks] = useState([
+    { id: "master", name: "Master", volume: 100, muted: false, icon: Volume2, color: "#0A84FF", label: t.mixer.masterTrack },
+    { id: "gaming", name: "Gaming", volume: 85, muted: false, icon: Gamepad2, color: "#30D158", label: t.mixer.gameTrack },
+    { id: "discord", name: "Discord", volume: 90, muted: false, icon: Mic2, color: "#BF5AF2", label: t.mixer.discordTrack },
+    { id: "music", name: "Media", volume: 65, muted: false, icon: Music, color: "#FF9F0A", label: t.mixer.musicTrack },
+  ]);
+
+  const updateVolume = (id: string, val: number) => {
+    setTracks((prev) =>
+      prev.map((tr) => (tr.id === id ? { ...tr, volume: val } : tr))
+    );
+  };
+
+  const toggleMute = (id: string) => {
+    setTracks((prev) =>
+      prev.map((tr) => (tr.id === id ? { ...tr, muted: !tr.muted } : tr))
+    );
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4 }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className="flex flex-col gap-6 pb-16 select-none max-w-5xl mx-auto w-full"
     >
-      {/* Hero Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#111c2e] via-[#09101d] to-black p-8 sm:p-10 shadow-2xl">
-        <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#0A84FF] blur-3xl opacity-20 pointer-events-none" />
-
-        <div className="relative z-10 space-y-4 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold tracking-wide uppercase">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{t.mixer.badge}</span>
+      {/* Workstation Teaser Header */}
+      <div className="apple-card p-6 sm:p-7 relative overflow-hidden space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#0A84FF]" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-secondary">
+              {t.mixer.sectionSubtitle}
+            </span>
           </div>
-
-          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight leading-tight">
-            {t.mixer.title}
-          </h1>
-
-          <p className="text-sm text-gray-300 leading-relaxed">
-            {t.mixer.desc}
-          </p>
-
-          <div className="pt-2 flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => notify(t.mixer.title, "info")}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#0A84FF] hover:bg-[#0071E3] text-white font-semibold text-xs rounded-xl shadow-lg transition active:scale-95 cursor-pointer"
-            >
-              <BellRing className="w-3.5 h-3.5" />
-              <span>{t.mixer.notifyMe}</span>
-            </button>
-          </div>
+          <span className="text-[11px] font-mono font-bold text-[#0A84FF] bg-[#0A84FF]/10 px-2.5 py-0.5 rounded-md">
+            {t.mixer.roadmapBadge}
+          </span>
         </div>
+
+        <h1 className="text-xl sm:text-2xl font-bold text-[color:var(--text-primary)] tracking-tight">
+          {t.mixer.title}
+        </h1>
+
+        <p className="text-xs text-secondary max-w-3xl leading-relaxed">
+          {t.mixer.desc}
+        </p>
       </div>
 
-      {/* Interactive / Visual Preview Teaser */}
-      <div className="apple-card p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-[color:var(--card-border)] pb-4">
+      {/* Interactive Faders Console */}
+      <div className="apple-card p-6 space-y-5">
+        <div className="flex items-center justify-between border-b border-[color:var(--card-border)] pb-3">
           <div className="flex items-center gap-2.5">
-            <SlidersHorizontal className="w-5 h-5 text-[#0A84FF]" />
-            <h3 className="text-sm font-bold text-[color:var(--text-primary)] uppercase tracking-wider">
+            <SlidersHorizontal className="w-4 h-4 text-[#0A84FF]" />
+            <h3 className="text-xs font-bold text-[color:var(--text-primary)] uppercase tracking-wider">
               {t.mixer.previewTitle}
             </h3>
           </div>
-          <span className="text-xs font-mono text-tertiary">{t.mixer.previewVersion}</span>
+          <span className="text-xs text-tertiary">{t.mixer.interactiveSim}</span>
         </div>
 
-        {/* Mock Faders Rack */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 opacity-75 pointer-events-none">
-          {/* Track 1: Master */}
-          <div className="apple-inner-box p-4 rounded-2xl flex flex-col justify-between space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-4 h-4 text-[#0A84FF]" />
-                <span className="text-xs font-bold text-[color:var(--text-primary)]">Master</span>
-              </div>
-              <span className="text-xs font-mono font-bold text-[#0A84FF]">100%</span>
-            </div>
-            <div className="h-32 bg-black/10 dark:bg-black/30 rounded-xl flex items-center justify-center relative overflow-hidden">
-              <div className="absolute bottom-0 inset-x-0 bg-[#0A84FF]/20 h-[80%]" />
-              <div className="w-full h-2 bg-[#0A84FF] rounded-full mx-4 shadow-sm" />
-            </div>
-            <span className="text-[10px] text-center text-tertiary">{t.mixer.masterTrack}</span>
-          </div>
+        {/* Faders Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {tracks.map((track) => {
+            const Icon = track.icon;
+            const effectiveVol = track.muted ? 0 : track.volume;
 
-          {/* Track 2: Game */}
-          <div className="apple-inner-box p-4 rounded-2xl flex flex-col justify-between space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Gamepad2 className="w-4 h-4 text-emerald-500" />
-                <span className="text-xs font-bold text-[color:var(--text-primary)]">Gaming</span>
-              </div>
-              <span className="text-xs font-mono font-bold text-emerald-500">85%</span>
-            </div>
-            <div className="h-32 bg-black/10 dark:bg-black/30 rounded-xl flex items-center justify-center relative overflow-hidden">
-              <div className="absolute bottom-0 inset-x-0 bg-emerald-500/20 h-[70%]" />
-              <div className="w-full h-2 bg-emerald-500 rounded-full mx-4 shadow-sm" />
-            </div>
-            <span className="text-[10px] text-center text-tertiary">{t.mixer.gameTrack}</span>
-          </div>
+            return (
+              <div
+                key={track.id}
+                className="apple-inner-box p-4 rounded-2xl flex flex-col justify-between space-y-4 transition hover:border-[color:var(--panel-border-strong)]"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${track.color}20`, color: track.color }}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-[color:var(--text-primary)] truncate">
+                      {track.name}
+                    </span>
+                  </div>
 
-          {/* Track 3: Voice / Chat */}
-          <div className="apple-inner-box p-4 rounded-2xl flex flex-col justify-between space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Mic2 className="w-4 h-4 text-purple-500" />
-                <span className="text-xs font-bold text-[color:var(--text-primary)]">Discord</span>
-              </div>
-              <span className="text-xs font-mono font-bold text-purple-500">90%</span>
-            </div>
-            <div className="h-32 bg-black/10 dark:bg-black/30 rounded-xl flex items-center justify-center relative overflow-hidden">
-              <div className="absolute bottom-0 inset-x-0 bg-purple-500/20 h-[75%]" />
-              <div className="w-full h-2 bg-purple-500 rounded-full mx-4 shadow-sm" />
-            </div>
-            <span className="text-[10px] text-center text-tertiary">{t.mixer.discordTrack}</span>
-          </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleMute(track.id)}
+                    className={`p-1 rounded-lg transition cursor-pointer ${
+                      track.muted
+                        ? "bg-red-500/20 text-red-500"
+                        : "text-secondary hover:text-[color:var(--text-primary)]"
+                    }`}
+                    title={track.muted ? "Rétablir le son" : "Couper le son"}
+                  >
+                    {track.muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
 
-          {/* Track 4: Music */}
-          <div className="apple-inner-box p-4 rounded-2xl flex flex-col justify-between space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Music className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-bold text-[color:var(--text-primary)]">Music</span>
+                {/* Level Meter & Slider */}
+                <div className="h-36 bg-black/15 dark:bg-black/30 rounded-xl flex items-center justify-between px-3 relative overflow-hidden">
+                  <div
+                    className="absolute bottom-0 inset-x-0 opacity-20 transition-all duration-150"
+                    style={{
+                      height: `${effectiveVol}%`,
+                      backgroundColor: track.color,
+                    }}
+                  />
+
+                  {/* Vertical Range Slider */}
+                  <div className="w-full flex items-center justify-center z-10">
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={effectiveVol}
+                      disabled={track.muted}
+                      onChange={(e) => updateVolume(track.id, Number(e.target.value))}
+                      className="h-28 w-2 appearance-none bg-transparent cursor-pointer [writing-mode:bt-lr] [-webkit-appearance:slider-vertical] accent-[#0A84FF]"
+                    />
+                  </div>
+                </div>
+
+                {/* Level Display & Subtitle */}
+                <div className="space-y-1 text-center">
+                  <span
+                    className="font-mono text-xs font-bold block"
+                    style={{ color: track.muted ? "var(--text-tertiary)" : track.color }}
+                  >
+                    {track.muted ? "MUTE" : `${track.volume}%`}
+                  </span>
+                  <span className="text-[10.5px] text-tertiary block truncate">
+                    {track.label}
+                  </span>
+                </div>
               </div>
-              <span className="text-xs font-mono font-bold text-amber-500">60%</span>
-            </div>
-            <div className="h-32 bg-black/10 dark:bg-black/30 rounded-xl flex items-center justify-center relative overflow-hidden">
-              <div className="absolute bottom-0 inset-x-0 bg-amber-500/20 h-[50%]" />
-              <div className="w-full h-2 bg-amber-500 rounded-full mx-4 shadow-sm" />
-            </div>
-            <span className="text-[10px] text-center text-tertiary">{t.mixer.musicTrack}</span>
-          </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Feature Highlights Grid */}
+      {/* Feature Architecture Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="apple-card p-5 space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-[#0A84FF]/15 text-[#0A84FF] flex items-center justify-center">
-            <SlidersHorizontal className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-[#0A84FF]/15 text-[#0A84FF] flex items-center justify-center">
+            <SlidersHorizontal className="w-4.5 h-4.5" />
           </div>
           <h4 className="text-xs font-bold text-[color:var(--text-primary)]">{t.mixer.feature1Title}</h4>
           <p className="text-xs text-secondary leading-relaxed">
@@ -148,8 +171,8 @@ export const MixerPage: React.FC = () => {
         </div>
 
         <div className="apple-card p-5 space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
-            <Headphones className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
+            <Headphones className="w-4.5 h-4.5" />
           </div>
           <h4 className="text-xs font-bold text-[color:var(--text-primary)]">{t.mixer.feature2Title}</h4>
           <p className="text-xs text-secondary leading-relaxed">
@@ -158,8 +181,8 @@ export const MixerPage: React.FC = () => {
         </div>
 
         <div className="apple-card p-5 space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-500 flex items-center justify-center">
+            <CheckCircle2 className="w-4.5 h-4.5" />
           </div>
           <h4 className="text-xs font-bold text-[color:var(--text-primary)]">{t.mixer.feature3Title}</h4>
           <p className="text-xs text-secondary leading-relaxed">

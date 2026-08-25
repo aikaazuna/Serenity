@@ -283,6 +283,16 @@ export function SettingsPage() {
               <li>{t.settings.creditsAutoEq}</li>
               <li>{t.settings.creditsApo}</li>
               <li>{t.settings.creditsIcons}</li>
+              <li>
+                <a
+                  href="https://github.com/luoxthedev/color-picker"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[#0A84FF] hover:underline"
+                >
+                  {t.settings.creditsLuox}
+                </a>
+              </li>
             </ul>
           </div>
         </div>

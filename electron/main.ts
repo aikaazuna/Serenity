@@ -8,6 +8,10 @@ import { setAutostart } from "./autostart.js";
 import { setQuitting } from "./appState.js";
 import { initUpdater } from "./updater.js";
 
+app.name = "Serenity Hub";
+app.setName("Serenity Hub");
+app.setAppUserModelId("com.serenityhub.app");
+
 // Une seule instance de l'application à la fois : les lancements suivants
 // se contentent de réveiller la fenêtre existante.
 const gotSingleInstanceLock = app.requestSingleInstanceLock();

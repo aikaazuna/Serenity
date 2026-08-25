@@ -57,7 +57,7 @@ export function AppShell() {
       <motion.div
         layout={animationsEnabled}
         animate={{
-          borderRadius: isMaximized ? 0 : 16,
+          borderRadius: isMaximized ? 0 : 20,
           scale: windowTransition === "minimize" ? 0.96 : 1,
           opacity: windowTransition === "minimize" ? 0.82 : 1,
         }}
@@ -66,8 +66,8 @@ export function AppShell() {
           ease: [0.22, 1, 0.36, 1],
         }}
         className={cn(
-          "app-gradient-bg flex h-screen w-screen flex-col overflow-hidden border text-[color:var(--text-primary)]",
-          isMaximized ? "rounded-none border-transparent" : "rounded-2xl border-[color:var(--panel-border)]",
+          "app-gradient-bg flex h-screen w-screen flex-col overflow-hidden text-[color:var(--text-primary)] transition-all",
+          isMaximized ? "rounded-none border-0" : "rounded-[20px] border border-[color:var(--panel-border-strong)] shadow-2xl",
         )}
       >
         <TitleBar />

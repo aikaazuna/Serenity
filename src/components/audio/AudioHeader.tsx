@@ -29,7 +29,22 @@ export const AudioHeader: React.FC = () => {
   const t = useI18n();
 
   const [deviceList, setDeviceList] = useState<string[]>([]);
+  const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const deviceDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        deviceDropdownRef.current &&
+        !deviceDropdownRef.current.contains(event.target as Node)
+      ) {
+        setDeviceMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -75,6 +90,31 @@ export const AudioHeader: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  const handleToggleMenu = () => {
+    setDeviceMenuOpen((v) => {
+      const next = !v;
+      if (next) {
+        // Refresh device list immediately on open
+        // @ts-ignore
+        if (isElectron() && window.colorflow?.audio) {
+          // @ts-ignore
+          const fetchFn = window.colorflow.audio.getAudioDevices || window.colorflow.audio.getDevices;
+          if (typeof fetchFn === "function") {
+            void fetchFn().then((raw: any) => {
+              if (Array.isArray(raw) && raw.length > 0) {
+                const names = raw.map((d: any) =>
+                  typeof d === "string" ? d : d.name || "Périphérique"
+                ).filter(Boolean);
+                setDeviceList(Array.from(new Set(names)));
+              }
+            });
+          }
+        }
+      }
+      return next;
+    });
+  };
 
   const handleAutoEQImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -124,47 +164,65 @@ export const AudioHeader: React.FC = () => {
   const isClippingRisk = preamp > 3;
 
   return (
-    <div className="apple-card p-5 select-none space-y-3.5">
+    <div className="apple-card relative z-30 p-5 select-none space-y-3.5">
       {/* Top Row: Device, Channel on Left; Actions & Master Power on Right */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Left: Device & Channel Selector */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Device Dropdown */}
-          
-          <div className="relative group">
-            <div className="apple-inner-box flex h-9 items-center gap-2 px-3 py-1 cursor-pointer">
+          {/* Device Dropdown with Click Toggle & Outside Click Listener */}
+          <div className="relative z-50" ref={deviceDropdownRef}>
+            <button
+              type="button"
+              onClick={handleToggleMenu}
+              className="apple-inner-box flex h-9 items-center gap-2 px-3 py-1 cursor-pointer hover:border-[color:var(--panel-border-strong)] transition"
+              title={t.audio.deviceSelector}
+            >
               <Speaker className="h-4 w-4 text-[#0A84FF] shrink-0" />
-              <div className="text-xs font-semibold text-[color:var(--text-primary)] max-w-[200px] truncate">
-                {devices.includes('all') ? t.audio.allOutputs : devices.length + ' Périphérique(s)'}
+              <span className="text-xs font-semibold text-[color:var(--text-primary)] max-w-[210px] truncate">
+                {devices.includes("all")
+                  ? t.audio.allOutputs
+                  : `${devices.length} ${t.audio.selectedOutputs}`}
+              </span>
+            </button>
+
+            {deviceMenuOpen && (
+              <div className="absolute top-full mt-2 left-0 w-72 bg-[color:var(--card-bg)] border border-[color:var(--panel-border-strong)] rounded-2xl shadow-2xl p-2.5 z-[300] backdrop-blur-2xl animate-fade-in space-y-1">
+                <div className="text-[11px] font-bold text-tertiary uppercase tracking-wider px-2 py-1">
+                  {t.audio.deviceSelector}
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                  <label className="flex items-center gap-2.5 p-2 hover:bg-[color:var(--panel-bg-strong)] rounded-xl cursor-pointer transition">
+                    <input
+                      type="checkbox"
+                      checked={devices.includes("all")}
+                      onChange={() => toggleDevice("all")}
+                      className="accent-[#0A84FF] h-4 w-4 rounded cursor-pointer"
+                    />
+                    <span className="text-xs font-medium text-[color:var(--text-primary)]">
+                      {t.audio.allOutputs}
+                    </span>
+                  </label>
+                  {deviceList
+                    .filter((d) => d && d !== "all" && d !== "Toutes les sorties audio" && d !== "All Devices")
+                    .map((d) => (
+                      <label
+                        key={d}
+                        className="flex items-center gap-2.5 p-2 hover:bg-[color:var(--panel-bg-strong)] rounded-xl cursor-pointer transition"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={devices.includes(d)}
+                          onChange={() => toggleDevice(d)}
+                          className="accent-[#0A84FF] h-4 w-4 rounded cursor-pointer"
+                        />
+                        <span className="text-xs font-medium text-[color:var(--text-primary)] truncate" title={d}>
+                          {d}
+                        </span>
+                      </label>
+                    ))}
+                </div>
               </div>
-            </div>
-            
-            <div className="absolute top-full mt-2 left-0 w-64 bg-[color:var(--card-bg)] border border-[color:var(--panel-border)] rounded-xl shadow-glass-lg p-2 z-[200] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-              <div className="max-h-64 overflow-y-auto space-y-1">
-                <label className="flex items-center gap-2 p-1.5 hover:bg-[color:var(--panel-bg-strong)] rounded-lg cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={devices.includes('all')} 
-                    onChange={() => toggleDevice('all')}
-                    className="accent-[#0A84FF]"
-                  />
-                  <span className="text-xs text-[color:var(--text-primary)]">{t.audio.allOutputs}</span>
-                </label>
-                {deviceList
-                  .filter((d) => d && d !== "all" && d !== "Toutes les sorties audio" && d !== "All Devices")
-                  .map((d) => (
-                    <label key={d} className="flex items-center gap-2 p-1.5 hover:bg-[color:var(--panel-bg-strong)] rounded-lg cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={devices.includes(d)} 
-                        onChange={() => toggleDevice(d)}
-                        className="accent-[#0A84FF]"
-                      />
-                      <span className="text-xs text-[color:var(--text-primary)] truncate">{d}</span>
-                    </label>
-                  ))}
-              </div>
-            </div>
+            )}
           </div>
 
 
