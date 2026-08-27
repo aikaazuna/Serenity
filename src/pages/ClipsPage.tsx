@@ -1,26 +1,15 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import {
-  Film,
-  Video,
+  Zap,
   Mic,
   Share2,
-  Zap,
-  Play,
-  Pause,
 } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
+import { ClipsAudioMixer } from "@/components/clips/ClipsAudioMixer";
 
 export const ClipsPage: React.FC = () => {
   const t = useI18n();
-
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playheadPos, setPlayheadPos] = useState(18);
-
-  const formatSeconds = (sec: number) => {
-    const s = Math.round(sec);
-    return `00:${s < 10 ? `0${s}` : s}`;
-  };
 
   return (
     <motion.div
@@ -52,101 +41,8 @@ export const ClipsPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Interactive Timeline Workstation */}
-      <div className="apple-card p-6 space-y-5">
-        <div className="flex items-center justify-between border-b border-[color:var(--card-border)] pb-3">
-          <div className="flex items-center gap-2.5">
-            <Film className="w-4 h-4 text-[#BF5AF2]" />
-            <h3 className="text-xs font-bold text-[color:var(--text-primary)] uppercase tracking-wider">
-              {t.clips.previewTitle}
-            </h3>
-          </div>
-          <span className="text-xs text-tertiary">{t.clips.timelinePreview}</span>
-        </div>
-
-        {/* Video Canvas & Multi-Track Scrubber */}
-        <div className="apple-inner-box p-5 rounded-2xl space-y-4">
-          {/* Mock Viewport */}
-          <div className="h-44 bg-black/25 dark:bg-black/45 rounded-xl flex items-center justify-center border border-[color:var(--card-border-inner)] relative overflow-hidden group">
-            <div className="flex flex-col items-center gap-2 text-tertiary">
-              <Video className="w-8 h-8 opacity-60" />
-              <span className="text-xs font-medium">{t.clips.replayActive}</span>
-            </div>
-
-            <div className="absolute bottom-3 left-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsPlaying((p) => !p)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition cursor-pointer"
-              >
-                {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
-              </button>
-              <span className="font-mono text-xs font-bold text-white/90 bg-black/60 px-2 py-1 rounded-md">
-                {formatSeconds(playheadPos)} / 00:30
-              </span>
-            </div>
-
-            <span className="absolute top-3 right-3 text-[10.5px] font-mono font-bold text-white/80 bg-black/60 px-2 py-0.5 rounded-md">
-              1080p 60 FPS • AV1
-            </span>
-          </div>
-
-          {/* Timeline Tracks */}
-          <div className="space-y-2.5 pt-2">
-            {/* Scrubber Bar */}
-            <div className="relative flex items-center">
-              <input
-                type="range"
-                min={0}
-                max={30}
-                step={0.1}
-                value={playheadPos}
-                onChange={(e) => setPlayheadPos(Number(e.target.value))}
-                className="w-full accent-[#BF5AF2] h-1.5 bg-black/20 dark:bg-black/50 rounded-full cursor-pointer"
-              />
-            </div>
-
-            {/* Track 1: Game Video */}
-            <div className="apple-inner-box p-2.5 rounded-xl flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="h-2 w-2 rounded-full bg-[#0A84FF] shrink-0" />
-                <span className="text-xs font-semibold text-[color:var(--text-primary)] truncate">
-                  {t.clips.track1}
-                </span>
-              </div>
-              <div className="h-3 flex-1 bg-[#0A84FF]/25 rounded-md overflow-hidden relative">
-                <div className="absolute inset-y-0 left-0 bg-[#0A84FF]/60 w-[90%] rounded-md" />
-              </div>
-            </div>
-
-            {/* Track 2: Microphone */}
-            <div className="apple-inner-box p-2.5 rounded-xl flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="h-2 w-2 rounded-full bg-[#30D158] shrink-0" />
-                <span className="text-xs font-semibold text-[color:var(--text-primary)] truncate">
-                  {t.clips.track2}
-                </span>
-              </div>
-              <div className="h-3 flex-1 bg-[#30D158]/25 rounded-md overflow-hidden relative">
-                <div className="absolute inset-y-0 left-[20%] bg-[#30D158]/60 w-[60%] rounded-md" />
-              </div>
-            </div>
-
-            {/* Track 3: Discord Chat */}
-            <div className="apple-inner-box p-2.5 rounded-xl flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="h-2 w-2 rounded-full bg-[#BF5AF2] shrink-0" />
-                <span className="text-xs font-semibold text-[color:var(--text-primary)] truncate">
-                  {t.clips.track3}
-                </span>
-              </div>
-              <div className="h-3 flex-1 bg-[#BF5AF2]/25 rounded-md overflow-hidden relative">
-                <div className="absolute inset-y-0 left-[10%] bg-[#BF5AF2]/60 w-[75%] rounded-md" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Real Multi-Track Clips Audio Workstation */}
+      <ClipsAudioMixer />
 
       {/* Feature Architecture Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -96,6 +96,18 @@ export function Sidebar() {
           badge: eqEnabled ? t.badges.on : undefined,
         },
         {
+          id: "mixer",
+          label: t.nav.mixer,
+          icon: SlidersHorizontal,
+          badge: mixerEnabled ? t.badges.on : undefined,
+        },
+        {
+          id: "clips",
+          label: t.nav.clips,
+          icon: Film,
+          badge: t.badges.soon,
+        },
+        {
           id: "audio-presets",
           label: t.nav.audioPresets,
           icon: Headphones,
@@ -109,18 +121,6 @@ export function Sidebar() {
           id: "audio-profiles",
           label: t.nav.audioProfiles,
           icon: FolderSync,
-        },
-        {
-          id: "mixer",
-          label: t.nav.mixer,
-          icon: SlidersHorizontal,
-          badge: mixerEnabled ? t.badges.on : undefined,
-        },
-        {
-          id: "clips",
-          label: t.nav.clips,
-          icon: Film,
-          badge: t.badges.soon,
         },
       ],
     },
