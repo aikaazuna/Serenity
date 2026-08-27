@@ -1,16 +1,4 @@
-import { cpSync, mkdirSync, existsSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const destResources = join(root, "dist-electron", "electron", "resources");
-const destElectron = join(root, "dist-electron", "electron");
-const electronResources = join(root, "electron", "resources");
-
-mkdirSync(destResources, { recursive: true });
-mkdirSync(electronResources, { recursive: true });
-
-const mixerPs1 = `param(
+param(
     [string]$Action = "list",
     [string]$ProcessName = "",
     [float]$Volume = 1.0,
@@ -173,8 +161,8 @@ public class CoreAudioMixer {
                         procName = proc.ProcessName;
                     } catch {}
 
-                    list.Add(string.Format("{{\\"pid\\":{0},\\"processName\\":\\"{1}\\",\\"volume\\":{2},\\"isMuted\\":{3}}}",
-                        pid, procName.Replace("\\\\", "\\\\\\\\").Replace("\\"", "\\\\\\""), (int)Math.Round(level * 100), isMuted ? "true" : "false"));
+                    list.Add(string.Format("{{\"pid\":{0},\"processName\":\"{1}\",\"volume\":{2},\"isMuted\":{3}}}",
+                        pid, procName.Replace("\\", "\\\\").Replace("\"", "\\\""), (int)Math.Round(level * 100), isMuted ? "true" : "false"));
                 }
             }
 
@@ -197,8 +185,8 @@ public class CoreAudioMixer {
                     }
                     if (match) {
                         seenPids.Add(pid);
-                        list.Add(string.Format("{{\\"pid\\":{0},\\"processName\\":\\"{1}\\",\\"volume\\":100,\\"isMuted\\":false}}",
-                            pid, proc.ProcessName.Replace("\\\\", "\\\\\\\\").Replace("\\"", "\\\\\\"")));
+                        list.Add(string.Format("{{\"pid\":{0},\"processName\":\"{1}\",\"volume\":100,\"isMuted\":false}}",
+                            pid, proc.ProcessName.Replace("\\", "\\\\").Replace("\"", "\\\"")));
                     }
                 } catch {}
             }
@@ -227,7 +215,7 @@ public class CoreAudioMixer {
             }
 
             var map = new List<string>();
-            map.Add(string.Format("\\"master\\":{0:F2}", masterPeak));
+            map.Add(string.Format("\"master\":{0:F2}", masterPeak));
 
             IMMDeviceCollection collection;
             enumerator.EnumAudioEndpoints(0, 1, out collection);
@@ -274,7 +262,7 @@ public class CoreAudioMixer {
 
                         try {
                             var proc = Process.GetProcessById((int)pid);
-                            map.Add(string.Format("\\"{0}\\":{1:F2}", proc.ProcessName.ToLower(), peak));
+                            map.Add(string.Format("\"{0}\":{1:F2}", proc.ProcessName.ToLower(), peak));
                         } catch {}
                     }
                 }
@@ -282,7 +270,7 @@ public class CoreAudioMixer {
 
             return "{" + string.Join(",", map.ToArray()) + "}";
         } catch {
-            return "{\\"master\\":0.0}";
+            return "{\"master\":0.0}";
         }
     }
 
@@ -496,16 +484,3 @@ if ($Action -eq "server") {
     $res = [CoreAudioMixer]::SetMasterMute($Mute)
     [Console]::WriteLine($res)
 }
-`;
-
-writeFileSync(join(electronResources, "audio-mixer.ps1"), mixerPs1, "utf8");
-writeFileSync(join(destResources, "audio-mixer.ps1"), mixerPs1, "utf8");
-
-if (existsSync(join(root, "electron", "resources"))) {
-  cpSync(join(root, "electron", "resources"), destResources, { recursive: true });
-}
-
-if (existsSync(join(root, "electron", "get-devices.ps1"))) {
-  cpSync(join(root, "electron", "get-devices.ps1"), join(destElectron, "get-devices.ps1"));
-}
-

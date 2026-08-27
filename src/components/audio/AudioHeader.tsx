@@ -292,14 +292,14 @@ export const AudioHeader: React.FC = () => {
           {/* Master Power Toggle Button */}
           <button
             onClick={toggleEqEnabled}
-            className={`flex h-9 items-center gap-2 px-4 py-1 rounded-xl text-xs font-bold shadow-sm transition cursor-pointer ${
+            className={`flex h-9 items-center gap-2 px-3.5 py-1 rounded-xl text-xs font-bold border transition cursor-pointer shadow-xs ${
               eqEnabled
-                ? "bg-[#30D158] hover:bg-[#28B84D] text-white"
-                : "apple-inner-box text-secondary hover:text-[color:var(--text-primary)]"
+                ? "bg-[#30D158]/15 border-[#30D158]/40 text-[#30D158]"
+                : "bg-neutral-500/10 border-neutral-500/25 text-neutral-400"
             }`}
           >
             <Power className="h-3.5 w-3.5" />
-            <span>{eqEnabled ? t.audio.active : t.audio.bypass}</span>
+            <span>Studio : {eqEnabled ? "ON" : "OFF"}</span>
           </button>
         </div>
       </div>

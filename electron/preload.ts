@@ -122,6 +122,31 @@ const colorflowApi: ColorFlowApi = {
     checkApoInstalled: (): Promise<boolean> => ipcRenderer.invoke(IpcChannels.AudioCheckApoInstalled),
     getApoPath: (): Promise<string> => ipcRenderer.invoke(IpcChannels.AudioGetApoPath),
   },
+
+  overlay: {
+    show: (payload: any) => ipcRenderer.send(IpcChannels.OverlayShow, payload),
+    onData: (cb: (payload: any) => void) => on<any>(IpcChannels.OverlayOnData, cb),
+    requestInit: (): Promise<any> => ipcRenderer.invoke(IpcChannels.OverlayRequestInit),
+  },
+
+  mixer: {
+    getSessions: (): Promise<any[]> =>
+      ipcRenderer.invoke(IpcChannels.MixerGetSessions),
+    getPeaks: (): Promise<Record<string, number>> =>
+      ipcRenderer.invoke(IpcChannels.MixerGetPeaks),
+    setProcessVolume: (processName: string, volume: number): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.MixerSetProcessVolume, { processName, volume }),
+    setProcessMute: (processName: string, isMuted: boolean): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.MixerSetProcessMute, { processName, isMuted }),
+    setMasterVolume: (volume: number): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.MixerSetMasterVolume, volume),
+    setMasterMute: (isMuted: boolean): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.MixerSetMasterMute, isMuted),
+    registerShortcuts: (bindings: any): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.MixerRegisterShortcuts, bindings),
+    onShortcutAction: (cb: (payload: any) => void) =>
+      on<any>(IpcChannels.MixerOnShortcutAction, cb),
+  },
 };
 
 contextBridge.exposeInMainWorld("colorflow", colorflowApi);

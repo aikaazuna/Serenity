@@ -263,7 +263,60 @@ export const IpcChannels = {
   AudioGetDevices: "audio:get-devices",
   AudioCheckApoInstalled: "audio:check-apo",
   AudioGetApoPath: "audio:get-apo-path",
+
+  // Overlay Global Système (Volume / Clips)
+  OverlayShow: "overlay:show",
+  OverlayOnData: "overlay:on-data",
+  OverlayRequestInit: "overlay:request-init",
+
+  // Mixer Global Shortcuts & Actions
+  MixerRegisterShortcuts: "mixer:register-shortcuts",
+  MixerOnShortcutAction: "mixer:on-shortcut-action",
+
+  // Mixer Audio Sessions & WASAPI Routing
+  MixerGetSessions: "mixer:get-sessions",
+  MixerGetPeaks: "mixer:get-peaks",
+  MixerSetProcessVolume: "mixer:set-process-volume",
+  MixerSetProcessMute: "mixer:set-process-mute",
+  MixerSetMasterVolume: "mixer:set-master-volume",
+  MixerSetMasterMute: "mixer:set-master-mute",
 } as const;
+
+export interface WindowsAudioSession {
+  pid: number;
+  processName: string;
+  volume: number;
+  isMuted: boolean;
+}
+
+export interface MixerGlobalShortcutBinding {
+  channelId: string;
+  channelName: string;
+  channelColor: string;
+  target: "headphone" | "stream";
+  action: "volUp" | "volDown" | "mute";
+  accelerator: string;
+}
+
+export interface OverlayNotificationItem {
+  id: string;
+  channelId?: string;
+  channelName: string;
+  channelColor: string;
+  channelIcon?: string;
+  target: "headphone" | "stream";
+  volume: number;
+  isMuted: boolean;
+  actionType: "up" | "down" | "mute" | "set";
+}
+
+export interface OverlayNotificationPayload {
+  type: "volume" | "clip" | "info";
+  title?: string;
+  subtitle?: string;
+  clipDurationSeconds?: number;
+  items: OverlayNotificationItem[];
+}
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
 

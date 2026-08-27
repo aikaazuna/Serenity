@@ -43,6 +43,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, "index.html"),
         picker: path.resolve(__dirname, "picker.html"),
+        overlay: path.resolve(__dirname, "overlay.html"),
       },
     },
   },

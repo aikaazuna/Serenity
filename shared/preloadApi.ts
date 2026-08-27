@@ -15,7 +15,11 @@ import type {
   UpdateProgress,
   UpdateReadyPayload,
   WindowStatePayload,
-} from "./types";
+  OverlayNotificationPayload,
+  OverlayNotificationItem,
+  MixerGlobalShortcutBinding,
+  WindowsAudioSession,
+} from "./types.js";
 
 export type Unsubscribe = () => void;
 
@@ -88,6 +92,21 @@ export interface ColorFlowApi {
     checkApoInstalled: () => Promise<boolean>;
     getApoPath: () => Promise<string>;
   };
+  overlay: {
+    show: (payload: OverlayNotificationPayload) => void;
+    onData: (cb: (payload: OverlayNotificationPayload) => void) => Unsubscribe;
+    requestInit: () => Promise<OverlayNotificationPayload | null>;
+  };
+  mixer: {
+    getSessions: () => Promise<WindowsAudioSession[]>;
+    getPeaks: () => Promise<Record<string, number>>;
+    setProcessVolume: (processName: string, volume: number) => Promise<boolean>;
+    setProcessMute: (processName: string, isMuted: boolean) => Promise<boolean>;
+    setMasterVolume: (volume: number) => Promise<boolean>;
+    setMasterMute: (isMuted: boolean) => Promise<boolean>;
+    registerShortcuts: (bindings: MixerGlobalShortcutBinding[]) => Promise<boolean>;
+    onShortcutAction: (cb: (payload: { channelId: string; target: "headphone" | "stream"; action: "volUp" | "volDown" | "mute" }) => void) => Unsubscribe;
+  };
 }
 
-export type { AppSettings };
+export type { AppSettings, OverlayNotificationPayload, OverlayNotificationItem, MixerGlobalShortcutBinding, WindowsAudioSession };

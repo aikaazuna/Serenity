@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from "electron";
 import { createMainWindow, showMainWindow } from "./windows/mainWindow.js";
+import { createOverlayWindow } from "./windows/overlayWindow.js";
 import { createTray, destroyTray } from "./tray.js";
 import { registerIpcHandlers } from "./ipc.js";
 import { registerPickerShortcut, unregisterAllShortcuts } from "./shortcuts.js";
@@ -26,6 +27,7 @@ if (!gotSingleInstanceLock) {
   app.whenReady().then(() => {
     registerIpcHandlers();
     createMainWindow();
+    createOverlayWindow();
     initUpdater();
     createTray(() => {
       setQuitting(true);

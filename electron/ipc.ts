@@ -2,13 +2,13 @@ import { BrowserWindow, clipboard, dialog, ipcMain, app } from "electron";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
-import { exec } from "node:child_process";
+import { exec, spawn, type ChildProcess } from "node:child_process";
 import util from "node:util";
 const execAsync = util.promisify(exec);
 import { IpcChannels, type StoreKey, type StoreSchema, type WindowStatePayload } from "../shared/types.js";
 import { store } from "./store.js";
 import { cancelPicker, confirmPicker, getPickerInitForWebContents, startPicker } from "./windows/pickerWindows.js";
-import { registerPickerShortcut } from "./shortcuts.js";
+import { registerPickerShortcut, registerMixerShortcuts } from "./shortcuts.js";
 import { setAutostart, getAutostart } from "./autostart.js";
 import { getMainWindow } from "./windows/mainWindow.js";
 import {
@@ -18,6 +18,8 @@ import {
   dismissUpdate,
   openReleasePage,
 } from "./updater.js";
+import { showOverlayNotification, getOverlayInitPayload } from "./windows/overlayWindow.js";
+import { resourcePath } from "./paths.js";
 
 function broadcastStoreChange<K extends StoreKey>(key: K, value: StoreSchema[K]): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -220,6 +222,145 @@ export function registerIpcHandlers(): void {
     } catch (e) {
       console.error("Failed to get audio devices", e);
       return [{ name: "Toutes les sorties audio", isInstalled: true }];
+    }
+  });
+
+  // Overlay Global Système
+  ipcMain.on(IpcChannels.OverlayShow, (_event, payload) => {
+    if (payload) {
+      showOverlayNotification(payload);
+    }
+  });
+
+  ipcMain.handle(IpcChannels.OverlayRequestInit, () => {
+    return getOverlayInitPayload();
+  });
+
+  // Enregistrement des raccourcis globaux du Mixer
+  ipcMain.handle(IpcChannels.MixerRegisterShortcuts, (_event, bindings) => {
+    return registerMixerShortcuts(bindings);
+  });
+
+  // Mixer Persistent CoreAudio Worker (Zero-Latency, No process spawn overhead)
+  let mixerWorker: ChildProcess | null = null;
+  let stdoutBuffer = "";
+  const pendingResolvers: Array<(data: string) => void> = [];
+
+  function getMixerWorker(): ChildProcess {
+    if (mixerWorker && !mixerWorker.killed && mixerWorker.exitCode === null) {
+      return mixerWorker;
+    }
+
+    const scriptPath = resourcePath("audio-mixer.ps1");
+    mixerWorker = spawn(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath, "-Action", "server"],
+      {
+        windowsHide: true,
+        stdio: ["pipe", "pipe", "ignore"],
+      }
+    );
+
+    stdoutBuffer = "";
+    mixerWorker.stdout?.setEncoding("utf8");
+    mixerWorker.stdout?.on("data", (chunk: string) => {
+      stdoutBuffer += chunk;
+      let newlineIdx: number;
+      while ((newlineIdx = stdoutBuffer.indexOf("\n")) !== -1) {
+        const line = stdoutBuffer.slice(0, newlineIdx).trim();
+        stdoutBuffer = stdoutBuffer.slice(newlineIdx + 1);
+        if (line) {
+          const resolve = pendingResolvers.shift();
+          if (resolve) resolve(line);
+        }
+      }
+    });
+
+    mixerWorker.on("exit", () => {
+      mixerWorker = null;
+      while (pendingResolvers.length > 0) {
+        const resolve = pendingResolvers.shift();
+        if (resolve) resolve("");
+      }
+    });
+
+    return mixerWorker;
+  }
+
+  function sendMixerCommand(cmd: object): Promise<string> {
+    return new Promise((resolve) => {
+      try {
+        const worker = getMixerWorker();
+        pendingResolvers.push(resolve);
+        worker.stdin?.write(JSON.stringify(cmd) + "\n");
+      } catch {
+        resolve("");
+      }
+    });
+  }
+
+  // Mixer WASAPI Audio Sessions & Volume Handlers
+  ipcMain.handle(IpcChannels.MixerGetSessions, async () => {
+    try {
+      const out = await sendMixerCommand({ action: "list" });
+      if (out && out.trim()) {
+        const parsed = JSON.parse(out.trim());
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle(IpcChannels.MixerGetPeaks, async () => {
+    try {
+      const out = await sendMixerCommand({ action: "peaks" });
+      if (out && out.trim()) {
+        const parsed = JSON.parse(out.trim());
+        if (typeof parsed === "object" && parsed !== null) return parsed;
+      }
+      return { master: 0 };
+    } catch {
+      return { master: 0 };
+    }
+  });
+
+  ipcMain.handle(IpcChannels.MixerSetProcessVolume, async (_event, { processName, volume }) => {
+    try {
+      const scalar = Math.max(0, Math.min(1, volume / 100));
+      void sendMixerCommand({ action: "set-process-volume", processName, volume: scalar });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle(IpcChannels.MixerSetProcessMute, async (_event, { processName, isMuted }) => {
+    try {
+      void sendMixerCommand({ action: "set-process-mute", processName, isMuted });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle(IpcChannels.MixerSetMasterVolume, async (_event, volume) => {
+    try {
+      const scalar = Math.max(0, Math.min(1, volume / 100));
+      void sendMixerCommand({ action: "set-master-volume", volume: scalar });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle(IpcChannels.MixerSetMasterMute, async (_event, isMuted) => {
+    try {
+      void sendMixerCommand({ action: "set-master-mute", isMuted });
+      return true;
+    } catch {
+      return false;
     }
   });
 }

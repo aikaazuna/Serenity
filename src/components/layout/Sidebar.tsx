@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useUiStore, type PageId } from "@/state/uiStore";
 import { useAudioStore } from "@/state/audioStore";
+import { useMixerStore } from "@/state/mixerStore";
 import { useAnimationsEnabled } from "@/hooks/useAnimations";
 import { useI18n } from "@/hooks/useI18n";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ export function Sidebar() {
   const activePage = useUiStore((s) => s.activePage);
   const setActivePage = useUiStore((s) => s.setActivePage);
   const eqEnabled = useAudioStore((s) => s.eqEnabled);
+  const mixerEnabled = useMixerStore((s) => s.mixerEnabled);
   const animationsEnabled = useAnimationsEnabled();
   const t = useI18n();
 
@@ -112,7 +114,7 @@ export function Sidebar() {
           id: "mixer",
           label: t.nav.mixer,
           icon: SlidersHorizontal,
-          badge: t.badges.soon,
+          badge: mixerEnabled ? t.badges.on : undefined,
         },
         {
           id: "clips",
@@ -217,7 +219,7 @@ export function Sidebar() {
       {/* Footer Info */}
       <div className="pt-3 border-t border-[color:var(--panel-border)] px-3 text-[11px] text-tertiary flex items-center justify-between">
         <span>Serenity Hub</span>
-        <span className="font-mono text-[10px] opacity-75">v1.0</span>
+        <span className="font-mono text-[10px] opacity-75">v1.1.0</span>
       </div>
     </aside>
   );
