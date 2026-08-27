@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useMixerStore } from "@/state/mixerStore";
 import type { MixerTab } from "@/types/mixer";
 import { useI18n } from "@/hooks/useI18n";
@@ -39,6 +39,7 @@ export const MixerTopNav: React.FC = () => {
 
   const tabs: { id: MixerTab; label: string; icon: React.ElementType; color: string }[] = [
     { id: "mixer", label: "Mixer", icon: Sliders, color: "#0A84FF" },
+    { id: "studio", label: "Studio", icon: Settings, color: "#FF2D55" },
     { id: "game", label: "Game", icon: Gamepad2, color: "#30D158" },
     { id: "chat", label: "Chat", icon: Mic2, color: "#00A6FB" },
     { id: "media", label: "Média", icon: Music, color: "#FF2D55" },

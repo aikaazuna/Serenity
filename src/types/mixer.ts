@@ -1,6 +1,6 @@
 export type MixerChannelId = "master" | "game" | "chat" | "media" | "aux" | "mic";
 
-export type MixerTab = "mixer" | MixerChannelId;
+export type MixerTab = "mixer" | "studio" | MixerChannelId;
 
 export interface MixerApp {
   id: string;

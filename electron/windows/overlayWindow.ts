@@ -105,7 +105,7 @@ export function showOverlayNotification(payload: OverlayNotificationPayload): vo
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       overlayWindow.hide();
     }
-  }, 2200);
+  }, 3000);
 }
 
 export function getOverlayInitPayload(): OverlayNotificationPayload | null {

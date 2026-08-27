@@ -355,9 +355,11 @@ export function registerIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle(IpcChannels.MixerSetMasterMute, async (_event, isMuted) => {
+  // New IPC channel to show a single HUD item via MixerShowHud
+  ipcMain.handle(IpcChannels.MixerShowHud, async (_event, hud) => {
     try {
-      void sendMixerCommand({ action: "set-master-mute", isMuted });
+      // hud is an OverlayNotificationItem
+      showOverlayNotification({ type: "volume", items: [hud] });
       return true;
     } catch {
       return false;

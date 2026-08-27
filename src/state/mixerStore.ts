@@ -221,21 +221,17 @@ const defaultCustomPresets: Record<MixerChannelId, MixerDspPreset[]> = {
 };
 
 function emitOverlayHud(hud: VolumeHudNotification | null) {
-  if (!hud || typeof window === "undefined" || !(window as any).colorflow?.overlay?.show) return;
-  (window as any).colorflow.overlay.show({
-    type: "volume",
-    items: [
-      {
-        id: `${hud.channelId}-${hud.target}`,
-        channelId: hud.channelId,
-        channelName: hud.channelName,
-        channelColor: hud.channelColor,
-        target: hud.target,
-        volume: hud.volume,
-        isMuted: hud.isMuted,
-        actionType: hud.actionType,
-      },
-    ],
+  if (!hud || typeof window === "undefined" || !(window as any).colorflow?.mixer?.showHud) return;
+  // Send a single HUD item via the new MixerShowHud IPC channel
+  (window as any).colorflow.mixer.showHud({
+    id: `${hud.channelId}-${hud.target}`,
+    channelId: hud.channelId,
+    channelName: hud.channelName,
+    channelColor: hud.channelColor,
+    target: hud.target,
+    volume: hud.volume,
+    isMuted: hud.isMuted,
+    actionType: hud.actionType,
   });
 }
 

@@ -93,10 +93,14 @@ export interface ColorFlowApi {
     getApoPath: () => Promise<string>;
   };
   overlay: {
+    /** Show a full overlay notification payload */
     show: (payload: OverlayNotificationPayload) => void;
+    /** Convenience method to show a single HUD item (volume/mute) */
+    showHud: (hud: OverlayNotificationItem) => void;
     onData: (cb: (payload: OverlayNotificationPayload) => void) => Unsubscribe;
     requestInit: () => Promise<OverlayNotificationPayload | null>;
   };
+
   mixer: {
     getSessions: () => Promise<WindowsAudioSession[]>;
     getPeaks: () => Promise<Record<string, number>>;

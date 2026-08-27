@@ -280,6 +280,7 @@ export const IpcChannels = {
   MixerSetProcessMute: "mixer:set-process-mute",
   MixerSetMasterVolume: "mixer:set-master-volume",
   MixerSetMasterMute: "mixer:set-master-mute",
+  MixerShowHud: "mixer:show-hud",
 } as const;
 
 export interface WindowsAudioSession {

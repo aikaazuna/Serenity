@@ -4,6 +4,7 @@ import { useMixerStore } from "@/state/mixerStore";
 import { MixerTopNav } from "@/components/mixer/MixerTopNav";
 import { MixerConsole } from "@/components/mixer/MixerConsole";
 import { MixerChannelDetail } from "@/components/mixer/MixerChannelDetail";
+import { MixerStudio } from "@/components/mixer/MixerStudio";
 import { MixerChannelSettingsModal } from "@/components/mixer/MixerChannelSettingsModal";
 import { useMixerShortcuts } from "@/hooks/useMixerShortcuts";
 import { Power } from "lucide-react";
@@ -90,8 +91,10 @@ export const MixerPage: React.FC = () => {
       <div className={mixerEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}>
         {activeTab === "mixer" ? (
           <MixerConsole />
+        ) : activeTab === "studio" ? (
+          <MixerStudio />
         ) : (
-          <MixerChannelDetail channelId={activeTab} />
+          <MixerChannelDetail channelId={activeTab as import("@/types/mixer").MixerChannelId} />
         )}
       </div>
 
