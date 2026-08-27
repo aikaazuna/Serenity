@@ -50,14 +50,16 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
   const ChannelIcon = getChannelIcon(channel.id);
   const currentPeak = channelPeaks ? (channelPeaks[channel.id] || 0) : 0;
 
+  const isFullyMuted = streamerMode ? (channel.headphoneMuted && channel.streamMuted) : channel.headphoneMuted;
+
   return (
     <div
       onClick={onSelect}
-      className={`apple-inner-box p-3.5 rounded-2xl flex flex-col gap-3.5 border transition-all duration-200 min-w-[170px] max-w-[200px] flex-1 select-none shadow-sm cursor-pointer ${
+      className={`apple-inner-box p-3.5 rounded-2xl flex flex-col gap-3.5 border-[2px] transition-all duration-200 min-w-[170px] max-w-[200px] flex-1 select-none cursor-pointer ${
         isSelected
-          ? "border-[2px] shadow-lg scale-[1.01]"
-          : "border-[color:var(--card-border-inner)] bg-[color:var(--card-bg)] hover:border-[color:var(--panel-border-strong)]"
-      }`}
+          ? "shadow-lg"
+          : "border-transparent bg-[color:var(--card-bg)] hover:border-[color:var(--panel-border-strong)] shadow-sm"
+      } ${isFullyMuted ? "opacity-50 grayscale" : ""}`}
       style={{
         borderColor: isSelected ? channel.color : undefined,
         backgroundColor: isSelected ? `${channel.color}15` : undefined,

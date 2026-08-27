@@ -12,6 +12,9 @@ import { useAudioStore } from "@/state/audioStore";
 export const ChannelInspector: React.FC<{ channelId: MixerChannelId }> = ({ channelId }) => {
   const channel = useMixerStore((s) => s.channels[channelId]);
   const toggleChannelDsp = useMixerStore((s) => s.toggleChannelDsp);
+  const unassignedApps = useMixerStore((s) => s.unassignedApps);
+  const assignApp = useMixerStore((s) => s.assignApp);
+  const unassignApp = useMixerStore((s) => s.unassignApp);
   const [activeTab, setActiveTab] = useState<"routing" | "studio" | "settings">("studio");
   
   const eqMode = useAudioStore((s) => s.mode);
@@ -65,25 +68,56 @@ export const ChannelInspector: React.FC<{ channelId: MixerChannelId }> = ({ chan
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-4"
+              className="space-y-6"
             >
-              <h3 className="text-sm font-bold">Applications assignées</h3>
-              <p className="text-xs text-secondary">
-                Sélectionnez les processus Windows qui doivent être envoyés vers le canal {channel.name}.
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
-                {channel.assignedApps.length > 0 ? (
-                  channel.assignedApps.map(app => (
-                    <div key={app.id} className="p-3 border border-[#0A84FF]/50 bg-[#0A84FF]/10 rounded-xl flex items-center justify-between">
-                      <span className="text-xs font-semibold">{app.name}</span>
-                      <div className="w-2 h-2 rounded-full bg-[#0A84FF]" />
+              <div>
+                <h3 className="text-sm font-bold">Applications de ce canal</h3>
+                <p className="text-xs text-secondary mt-1">
+                  Ces applications sont liées à {channel.name}. Cliquez pour les retirer.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
+                  {channel.assignedApps.length > 0 ? (
+                    channel.assignedApps.map(app => (
+                      <button
+                        key={app.id}
+                        onClick={() => unassignApp(channelId, app.id)}
+                        className="p-3 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/40 rounded-xl flex items-center justify-between text-left transition cursor-pointer group"
+                      >
+                        <span className="text-xs font-semibold truncate group-hover:text-red-500 transition-colors">{app.name}</span>
+                        <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                      </button>
+                    ))
+                  ) : (
+                    <div className="col-span-full p-4 border border-dashed border-[color:var(--panel-border-strong)] rounded-xl text-center text-xs text-tertiary">
+                      Aucune application assignée à ce canal.
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-full p-4 border border-dashed border-[color:var(--panel-border-strong)] rounded-xl text-center text-xs text-tertiary">
-                    Aucune application assignée à ce canal.
-                  </div>
-                )}
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[color:var(--panel-border)]">
+                <h3 className="text-sm font-bold">Applications non assignées</h3>
+                <p className="text-xs text-secondary mt-1">
+                  Cliquez sur une application pour l'ajouter à {channel.name}.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                  {unassignedApps.length > 0 ? (
+                    unassignedApps.map(app => (
+                      <button
+                        key={app.id}
+                        onClick={() => assignApp(channelId, app)}
+                        className="p-2.5 border border-[color:var(--panel-border)] bg-[color:var(--panel-bg-strong)] hover:bg-[color:var(--panel-bg)] hover:border-[#30D158]/50 rounded-xl flex items-center justify-between text-left transition cursor-pointer group"
+                      >
+                        <span className="text-xs font-medium truncate group-hover:text-[#30D158] transition-colors">{app.name}</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-neutral-400 group-hover:bg-[#30D158] shrink-0" />
+                      </button>
+                    ))
+                  ) : (
+                    <div className="col-span-full p-4 border border-dashed border-[color:var(--panel-border-strong)] rounded-xl text-center text-xs text-tertiary">
+                      Toutes les applications détectées sont déjà assignées.
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
