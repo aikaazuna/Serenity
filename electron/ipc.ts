@@ -19,7 +19,7 @@ import {
   openReleasePage,
 } from "./updater.js";
 import { showOverlayNotification, getOverlayInitPayload } from "./windows/overlayWindow.js";
-import { resourcePath } from "./paths.js";
+import { getAudioMixerScriptPath } from "./paths.js";
 
 function broadcastStoreChange<K extends StoreKey>(key: K, value: StoreSchema[K]): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -251,7 +251,7 @@ export function registerIpcHandlers(): void {
       return mixerWorker;
     }
 
-    const scriptPath = resourcePath("audio-mixer.ps1");
+    const scriptPath = getAudioMixerScriptPath();
     mixerWorker = spawn(
       "powershell.exe",
       ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath, "-Action", "server"],
@@ -338,7 +338,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.MixerSetProcessMute, async (_event, { processName, isMuted }) => {
     try {
-      void sendMixerCommand({ action: "set-process-mute", processName, isMuted });
+      void sendMixerCommand({ action: "set-process-mute", processName, isMuted: Boolean(isMuted) });
       return true;
     } catch {
       return false;
@@ -349,6 +349,15 @@ export function registerIpcHandlers(): void {
     try {
       const scalar = Math.max(0, Math.min(1, volume / 100));
       void sendMixerCommand({ action: "set-master-volume", volume: scalar });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle(IpcChannels.MixerSetMasterMute, async (_event, isMuted) => {
+    try {
+      void sendMixerCommand({ action: "set-master-mute", isMuted: Boolean(isMuted) });
       return true;
     } catch {
       return false;

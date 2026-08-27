@@ -12,8 +12,6 @@ import {
   Mic,
   Volume2,
   Settings,
-  SlidersHorizontal,
-  Power,
 } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -42,8 +40,6 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
   const setStreamVolume = useMixerStore((s) => s.setStreamVolume);
   const toggleHeadphoneMute = useMixerStore((s) => s.toggleHeadphoneMute);
   const toggleStreamMute = useMixerStore((s) => s.toggleStreamMute);
-  const toggleChannelDsp = useMixerStore((s) => s.toggleChannelDsp);
-  const setActiveTab = useMixerStore((s) => s.setActiveTab);
   const openChannelSettings = useMixerStore((s) => s.openChannelSettings);
   const channelPeaks = useMixerStore((s) => s.channelPeaks);
 
@@ -89,38 +85,7 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
         </button>
       </div>
 
-      {/* 2. Preset & Power Bypass Pill - Fixed height h-7 */}
-      <div className="flex items-center gap-1.5 h-7 flex-none">
-        <button
-          type="button"
-          onClick={() => setActiveTab(channel.id)}
-          title={`Modifier l'égaliseur de ${channel.name}`}
-          className={`flex-1 h-7 px-2 rounded-lg text-[10px] font-semibold border transition truncate flex items-center justify-between cursor-pointer shadow-xs ${
-            channel.eqEnabled
-              ? "text-secondary hover:text-[color:var(--text-primary)] bg-[color:var(--panel-bg)] hover:bg-[color:var(--panel-bg-strong)] border-[color:var(--panel-border)]"
-              : "text-neutral-400 bg-neutral-500/10 border-neutral-500/20 line-through opacity-60"
-          }`}
-        >
-          <span className="truncate">{channel.currentPreset}</span>
-          <SlidersHorizontal className="w-3 h-3 shrink-0 ml-1 opacity-70" />
-        </button>
-
-        {/* Quick DSP ON/OFF Toggle */}
-        <button
-          type="button"
-          onClick={() => toggleChannelDsp(channel.id)}
-          title={channel.eqEnabled ? "Désactiver l'égaliseur sur ce canal" : "Activer l'égaliseur sur ce canal"}
-          className={`w-7 h-7 rounded-lg flex items-center justify-center border transition cursor-pointer shrink-0 shadow-xs ${
-            channel.eqEnabled
-              ? "bg-[#30D158]/20 border-[#30D158]/40 text-[#30D158]"
-              : "bg-neutral-500/15 border-neutral-500/25 text-neutral-400"
-          }`}
-        >
-          <Power className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* 3. Faders Area - Generous Height h-[260px] with lots of breathing room */}
+      {/* 2. Faders Area - Generous Height h-[260px] with lots of breathing room */}
       <div className="h-[260px] flex items-center justify-center flex-none py-1.5 my-0.5">
         {streamerMode ? (
           <div className="grid grid-cols-2 gap-3 w-full h-full">

@@ -7,6 +7,7 @@ import { InteractiveCurveRenderer } from "@/components/audio/InteractiveCurveRen
 import { ParametricEQ } from "@/components/audio/ParametricEQ";
 import { GraphicEQ } from "@/components/audio/GraphicEQ";
 import { AudioEffectsRack } from "@/components/audio/AudioEffectsRack";
+import { ClipsAudioMixer } from "@/components/clips/ClipsAudioMixer";
 import { useAudioStore } from "@/state/audioStore";
 
 export const ChannelInspector: React.FC<{ channelId: MixerChannelId }> = ({ channelId }) => {
@@ -150,13 +151,18 @@ export const ChannelInspector: React.FC<{ channelId: MixerChannelId }> = ({ chan
                 </button>
               </div>
 
-              <div className={channel.eqEnabled ? "opacity-100 transition-opacity" : "opacity-40 pointer-events-none transition-opacity"}>
+              <div className={channel.eqEnabled ? "opacity-100 transition-opacity space-y-6" : "opacity-40 pointer-events-none transition-opacity space-y-6"}>
                 <InteractiveCurveRenderer />
-                <div className="mt-6">
+                <div>
                   <AudioEffectsRack />
                 </div>
-                <div className="mt-6">
+                <div>
                   {eqMode === "parametric" ? <ParametricEQ /> : <GraphicEQ />}
+                </div>
+
+                {/* Multi-Track Clips & Replays Audio Mixer directly below Studio Audio */}
+                <div className="pt-2">
+                  <ClipsAudioMixer />
                 </div>
               </div>
             </motion.div>
