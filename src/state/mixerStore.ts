@@ -768,7 +768,7 @@ export const useMixerStore = create<MixerStore>()(
         }),
     }),
     {
-      name: "serenity-mixer-storage-v8",
+      name: "serenity-mixer-storage-v9",
     }
   )
 );
