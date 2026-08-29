@@ -21,17 +21,17 @@ export function distPath(...segments: string[]): string {
 import { app } from "electron";
 import fsSync from "node:fs";
 
-/** Chemin vers le script PowerShell audio-mixer, extrait sur disque si packagé. */
-export function getAudioMixerScriptPath(): string {
+/** Chemin vers l'exécutable natif audio-mixer.exe, extrait sur disque si packagé. */
+export function getAudioMixerBinaryPath(): string {
   try {
     const userData = app.getPath("userData");
-    const unpackedPath = path.join(userData, "audio-mixer.ps1");
-    const sourcePath = resourcePath("audio-mixer.ps1");
+    const unpackedPath = path.join(userData, "audio-mixer.exe");
+    const sourcePath = resourcePath("audio-mixer.exe");
 
     if (fsSync.existsSync(sourcePath)) {
-      const content = fsSync.readFileSync(sourcePath, "utf8");
-      if (!fsSync.existsSync(unpackedPath) || fsSync.readFileSync(unpackedPath, "utf8") !== content) {
-        fsSync.writeFileSync(unpackedPath, content, "utf8");
+      const sourceBuf = fsSync.readFileSync(sourcePath);
+      if (!fsSync.existsSync(unpackedPath) || fsSync.statSync(unpackedPath).size !== sourceBuf.length) {
+        fsSync.writeFileSync(unpackedPath, sourceBuf);
       }
       return unpackedPath;
     }
@@ -39,5 +39,5 @@ export function getAudioMixerScriptPath(): string {
       return unpackedPath;
     }
   } catch {}
-  return resourcePath("audio-mixer.ps1");
+  return resourcePath("audio-mixer.exe");
 }

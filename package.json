@@ -77,7 +77,7 @@
     "publish": null,
     "extraResources": [
       "electron/get-devices.ps1",
-      "electron/resources/audio-mixer.ps1"
+      "electron/resources/audio-mixer.exe"
     ],
     "directories": {
       "output": "release",

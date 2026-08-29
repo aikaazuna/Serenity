@@ -19,7 +19,7 @@ import {
   openReleasePage,
 } from "./updater.js";
 import { showOverlayNotification, getOverlayInitPayload } from "./windows/overlayWindow.js";
-import { getAudioMixerScriptPath } from "./paths.js";
+import { getAudioMixerBinaryPath } from "./paths.js";
 
 function broadcastStoreChange<K extends StoreKey>(key: K, value: StoreSchema[K]): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -251,15 +251,11 @@ export function registerIpcHandlers(): void {
       return mixerWorker;
     }
 
-    const scriptPath = getAudioMixerScriptPath();
-    mixerWorker = spawn(
-      "powershell.exe",
-      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath, "-Action", "server"],
-      {
-        windowsHide: true,
-        stdio: ["pipe", "pipe", "ignore"],
-      }
-    );
+    const exePath = getAudioMixerBinaryPath();
+    mixerWorker = spawn(exePath, ["server"], {
+      windowsHide: true,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
 
     stdoutBuffer = "";
     mixerWorker.stdout?.setEncoding("utf8");
