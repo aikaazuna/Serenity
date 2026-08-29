@@ -291,16 +291,24 @@ export const useMixerStore = create<MixerStore>()(
 
           let maxAppPeak = 0;
           for (const app of ch.assignedApps) {
-            const lower = (app.executable || app.name).toLowerCase();
-            if (typeof peaks[lower] === "number") {
-              maxAppPeak = Math.max(maxAppPeak, peaks[lower]);
+            const cleanName = (app.executable || app.name || "").replace(/\.exe$/i, "").trim().toLowerCase();
+            if (!cleanName) continue;
+            
+            if (typeof peaks[cleanName] === "number") {
+              maxAppPeak = Math.max(maxAppPeak, peaks[cleanName]);
+            } else {
+              for (const [k, pVal] of Object.entries(peaks)) {
+                if (k !== "master" && typeof pVal === "number") {
+                  if (k === cleanName || k.includes(cleanName) || cleanName.includes(k)) {
+                    maxAppPeak = Math.max(maxAppPeak, pVal);
+                  }
+                }
+              }
             }
           }
 
           if (maxAppPeak > 0) {
             newPeaks[chId] = maxAppPeak * (ch.headphoneVolume / 100);
-          } else if (masterPeak > 0 && ch.assignedApps.length > 0) {
-            newPeaks[chId] = masterPeak * (ch.headphoneVolume / 100) * 0.75;
           } else {
             newPeaks[chId] = 0;
           }

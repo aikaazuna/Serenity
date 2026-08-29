@@ -32,22 +32,27 @@ export const MixerPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [syncWindowsAudioSessions]);
 
-  // Real-time audio peak streaming from Windows CoreAudio
+  // Real-time audio peak streaming from Windows CoreAudio (Smooth 20fps polling with local interpolation)
   useEffect(() => {
     let active = true;
+    let isFetching = false;
     const pollPeaks = async () => {
-      if (!active || !(window as any).colorflow?.mixer?.getPeaks) return;
+      if (!active || isFetching || !(window as any).colorflow?.mixer?.getPeaks) return;
+      isFetching = true;
       try {
         const peaks = await (window as any).colorflow.mixer.getPeaks();
         if (active && peaks) {
           updatePeaks(peaks);
         }
-      } catch {}
+      } catch {
+      } finally {
+        isFetching = false;
+      }
     };
 
     const interval = setInterval(() => {
       void pollPeaks();
-    }, 150);
+    }, 50);
 
     return () => {
       active = false;

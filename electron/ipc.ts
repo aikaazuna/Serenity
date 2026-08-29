@@ -244,7 +244,8 @@ export function registerIpcHandlers(): void {
   // Mixer Persistent CoreAudio Worker (Zero-Latency, No process spawn overhead)
   let mixerWorker: ChildProcess | null = null;
   let stdoutBuffer = "";
-  const pendingResolvers: Array<(data: string) => void> = [];
+  let nextRequestId = 1;
+  const pendingRequests = new Map<number, (data: any) => void>();
 
   function getMixerWorker(): ChildProcess {
     if (mixerWorker && !mixerWorker.killed && mixerWorker.exitCode === null) {
@@ -266,31 +267,43 @@ export function registerIpcHandlers(): void {
         const line = stdoutBuffer.slice(0, newlineIdx).trim();
         stdoutBuffer = stdoutBuffer.slice(newlineIdx + 1);
         if (line) {
-          const resolve = pendingResolvers.shift();
-          if (resolve) resolve(line);
+          try {
+            const res = JSON.parse(line);
+            if (res && typeof res.id === "number") {
+              const resolve = pendingRequests.get(res.id);
+              if (resolve) {
+                pendingRequests.delete(res.id);
+                resolve(res.data);
+              }
+            }
+          } catch {
+            // Ignore non-json or malformed line
+          }
         }
       }
     });
 
     mixerWorker.on("exit", () => {
       mixerWorker = null;
-      while (pendingResolvers.length > 0) {
-        const resolve = pendingResolvers.shift();
-        if (resolve) resolve("");
+      for (const resolve of pendingRequests.values()) {
+        resolve(null);
       }
+      pendingRequests.clear();
     });
 
     return mixerWorker;
   }
 
-  function sendMixerCommand(cmd: object): Promise<string> {
+  function sendMixerCommand(cmd: Record<string, any>): Promise<any> {
     return new Promise((resolve) => {
       try {
         const worker = getMixerWorker();
-        pendingResolvers.push(resolve);
-        worker.stdin?.write(JSON.stringify(cmd) + "\n");
+        const id = nextRequestId++;
+        if (nextRequestId > 1000000) nextRequestId = 1;
+        pendingRequests.set(id, resolve);
+        worker.stdin?.write(JSON.stringify({ id, ...cmd }) + "\n");
       } catch {
-        resolve("");
+        resolve(null);
       }
     });
   }
@@ -298,11 +311,8 @@ export function registerIpcHandlers(): void {
   // Mixer WASAPI Audio Sessions & Volume Handlers
   ipcMain.handle(IpcChannels.MixerGetSessions, async () => {
     try {
-      const out = await sendMixerCommand({ action: "list" });
-      if (out && out.trim()) {
-        const parsed = JSON.parse(out.trim());
-        if (Array.isArray(parsed)) return parsed;
-      }
+      const data = await sendMixerCommand({ action: "list" });
+      if (Array.isArray(data)) return data;
       return [];
     } catch {
       return [];
@@ -311,11 +321,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.MixerGetPeaks, async () => {
     try {
-      const out = await sendMixerCommand({ action: "peaks" });
-      if (out && out.trim()) {
-        const parsed = JSON.parse(out.trim());
-        if (typeof parsed === "object" && parsed !== null) return parsed;
-      }
+      const data = await sendMixerCommand({ action: "peaks" });
+      if (typeof data === "object" && data !== null) return data;
       return { master: 0 };
     } catch {
       return { master: 0 };
@@ -325,8 +332,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannels.MixerSetProcessVolume, async (_event, { processName, volume }) => {
     try {
       const scalar = Math.max(0, Math.min(1, volume / 100));
-      void sendMixerCommand({ action: "set-process-volume", processName, volume: scalar });
-      return true;
+      const res = await sendMixerCommand({ action: "set-process-volume", processName, volume: scalar });
+      return Boolean(res);
     } catch {
       return false;
     }
@@ -334,8 +341,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.MixerSetProcessMute, async (_event, { processName, isMuted }) => {
     try {
-      void sendMixerCommand({ action: "set-process-mute", processName, isMuted: Boolean(isMuted) });
-      return true;
+      const res = await sendMixerCommand({ action: "set-process-mute", processName, isMuted: Boolean(isMuted) });
+      return Boolean(res);
     } catch {
       return false;
     }
@@ -344,8 +351,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannels.MixerSetMasterVolume, async (_event, volume) => {
     try {
       const scalar = Math.max(0, Math.min(1, volume / 100));
-      void sendMixerCommand({ action: "set-master-volume", volume: scalar });
-      return true;
+      const res = await sendMixerCommand({ action: "set-master-volume", volume: scalar });
+      return Boolean(res);
     } catch {
       return false;
     }
@@ -353,8 +360,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.MixerSetMasterMute, async (_event, isMuted) => {
     try {
-      void sendMixerCommand({ action: "set-master-mute", isMuted: Boolean(isMuted) });
-      return true;
+      const res = await sendMixerCommand({ action: "set-master-mute", isMuted: Boolean(isMuted) });
+      return Boolean(res);
     } catch {
       return false;
     }

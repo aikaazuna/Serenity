@@ -109,6 +109,7 @@
       ],
       "icon": "build/icon.ico",
       "artifactName": "SerenityHub-Setup-${version}.${ext}",
+      "sign": null,
       "signAndEditExecutable": false
     },
     "nsis": {

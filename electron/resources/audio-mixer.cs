@@ -4,12 +4,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Text;
 
 [Guid("87CE5498-68D6-44E5-9215-6DA47EF883D8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 public interface ISimpleAudioVolume {
-    [PreserveSig] int SetMasterVolume(float fLevel, [MarshalAs(UnmanagedType.LPStruct)] Guid EventContext);
+    [PreserveSig] int SetMasterVolume(float fLevel, ref Guid EventContext);
     [PreserveSig] int GetMasterVolume(out float pfLevel);
-    [PreserveSig] int SetMute(bool bMute, [MarshalAs(UnmanagedType.LPStruct)] Guid EventContext);
+    [PreserveSig] int SetMute(bool bMute, ref Guid EventContext);
     [PreserveSig] int GetMute(out bool pbMute);
 }
 
@@ -22,11 +23,11 @@ public interface IAudioMeterInformation {
 public interface IAudioSessionControl2 {
     [PreserveSig] int GetState(out int pRetVal);
     [PreserveSig] int GetDisplayName([MarshalAs(UnmanagedType.LPWStr)] out string pRetVal);
-    [PreserveSig] int SetDisplayName([MarshalAs(UnmanagedType.LPWStr)] string Value, [MarshalAs(UnmanagedType.LPStruct)] Guid EventContext);
+    [PreserveSig] int SetDisplayName([MarshalAs(UnmanagedType.LPWStr)] string Value, ref Guid EventContext);
     [PreserveSig] int GetIconPath([MarshalAs(UnmanagedType.LPWStr)] out string pRetVal);
-    [PreserveSig] int SetIconPath([MarshalAs(UnmanagedType.LPWStr)] string Value, [MarshalAs(UnmanagedType.LPStruct)] Guid EventContext);
+    [PreserveSig] int SetIconPath([MarshalAs(UnmanagedType.LPWStr)] string Value, ref Guid EventContext);
     [PreserveSig] int GetGroupingParam(out Guid pRetVal);
-    [PreserveSig] int SetGroupingParam([MarshalAs(UnmanagedType.LPStruct)] Guid Override, [MarshalAs(UnmanagedType.LPStruct)] Guid EventContext);
+    [PreserveSig] int SetGroupingParam(ref Guid Override, ref Guid EventContext);
     [PreserveSig] int RegisterAudioSessionNotification(IntPtr NewNotifications);
     [PreserveSig] int UnregisterAudioSessionNotification(IntPtr NewNotifications);
     [PreserveSig] int GetSessionIdentifier([MarshalAs(UnmanagedType.LPWStr)] out string pRetVal);
@@ -59,15 +60,15 @@ public interface IAudioEndpointVolume {
     [PreserveSig] int RegisterControlChangeNotify(IntPtr pNotify);
     [PreserveSig] int UnregisterControlChangeNotify(IntPtr pNotify);
     [PreserveSig] int GetChannelCount(out uint pnChannelCount);
-    [PreserveSig] int SetMasterVolumeLevel(float fLevelDB, [MarshalAs(UnmanagedType.LPStruct)] Guid pguidEventContext);
-    [PreserveSig] int SetMasterVolumeLevelScalar(float fLevel, [MarshalAs(UnmanagedType.LPStruct)] Guid pguidEventContext);
+    [PreserveSig] int SetMasterVolumeLevel(float fLevelDB, ref Guid pguidEventContext);
+    [PreserveSig] int SetMasterVolumeLevelScalar(float fLevel, ref Guid pguidEventContext);
     [PreserveSig] int GetMasterVolumeLevel(out float pfLevelDB);
     [PreserveSig] int GetMasterVolumeLevelScalar(out float pfLevel);
-    [PreserveSig] int SetChannelVolumeLevel(uint nChannel, float fLevelDB, [MarshalAs(UnmanagedType.LPStruct)] Guid pguidEventContext);
-    [PreserveSig] int SetChannelVolumeLevelScalar(uint nChannel, float fLevel, [MarshalAs(UnmanagedType.LPStruct)] Guid pguidEventContext);
+    [PreserveSig] int SetChannelVolumeLevel(uint nChannel, float fLevelDB, ref Guid pguidEventContext);
+    [PreserveSig] int SetChannelVolumeLevelScalar(uint nChannel, float fLevel, ref Guid pguidEventContext);
     [PreserveSig] int GetChannelVolumeLevel(uint nChannel, out float pfLevelDB);
     [PreserveSig] int GetChannelVolumeLevelScalar(uint nChannel, out float pfLevel);
-    [PreserveSig] int SetMute(bool bMute, [MarshalAs(UnmanagedType.LPStruct)] Guid pguidEventContext);
+    [PreserveSig] int SetMute(bool bMute, ref Guid pguidEventContext);
     [PreserveSig] int GetMute(out bool pbMute);
 }
 
@@ -85,11 +86,20 @@ public class Program {
         try {
             var enumerator = (IMMDeviceEnumerator)(new MMDeviceEnumeratorComObject());
             IMMDevice dev;
-            enumerator.GetDefaultAudioEndpoint(0, 1, out dev);
-            return dev;
+            int hr = enumerator.GetDefaultAudioEndpoint(0, 1, out dev);
+            if (hr == 0 && dev != null) return dev;
+            return null;
         } catch {
             return null;
         }
+    }
+
+    private static string NormalizeName(string name) {
+        if (string.IsNullOrEmpty(name)) return "";
+        try {
+            name = Path.GetFileNameWithoutExtension(name);
+        } catch {}
+        return name.Trim().ToLowerInvariant();
     }
 
     public static string GetSessionsJson() {
@@ -209,7 +219,10 @@ public class Program {
 
                         try {
                             var p = Process.GetProcessById((int)pid);
-                            map.Add(string.Format(CultureInfo.InvariantCulture, "\"{0}\":{1:F2}", p.ProcessName.ToLower(), peak));
+                            string cleanName = NormalizeName(p.ProcessName);
+                            if (!string.IsNullOrEmpty(cleanName)) {
+                                map.Add(string.Format(CultureInfo.InvariantCulture, "\"{0}\":{1:F2}", cleanName, peak));
+                            }
                         } catch {}
                     }
                 }
@@ -223,6 +236,9 @@ public class Program {
 
     public static bool SetProcessVolume(string processName, float level) {
         try {
+            string target = NormalizeName(processName);
+            if (string.IsNullOrEmpty(target)) return false;
+
             var dev = GetDefaultRenderDevice();
             if (dev == null) return false;
             Guid iid = typeof(IAudioSessionManager2).GUID;
@@ -243,6 +259,7 @@ public class Program {
 
             int count = 0;
             getCount(enumPtr, out count);
+            bool matched = false;
 
             for (int i = 0; i < count; i++) {
                 IntPtr sPtr;
@@ -257,14 +274,16 @@ public class Program {
                 if (pid > 0) {
                     try {
                         var p = Process.GetProcessById((int)pid);
-                        if (p.ProcessName.IndexOf(processName, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            processName.IndexOf(p.ProcessName, StringComparison.OrdinalIgnoreCase) >= 0) {
-                            vol.SetMasterVolume(level, Guid.Empty);
+                        string procName = NormalizeName(p.ProcessName);
+                        if (procName == target || procName.Contains(target) || target.Contains(procName)) {
+                            Guid g = Guid.Empty;
+                            vol.SetMasterVolume(level, ref g);
+                            matched = true;
                         }
                     } catch {}
                 }
             }
-            return true;
+            return matched;
         } catch {
             return false;
         }
@@ -272,6 +291,9 @@ public class Program {
 
     public static bool SetProcessMute(string processName, bool isMuted) {
         try {
+            string target = NormalizeName(processName);
+            if (string.IsNullOrEmpty(target)) return false;
+
             var dev = GetDefaultRenderDevice();
             if (dev == null) return false;
             Guid iid = typeof(IAudioSessionManager2).GUID;
@@ -292,6 +314,7 @@ public class Program {
 
             int count = 0;
             getCount(enumPtr, out count);
+            bool matched = false;
 
             for (int i = 0; i < count; i++) {
                 IntPtr sPtr;
@@ -306,14 +329,16 @@ public class Program {
                 if (pid > 0) {
                     try {
                         var p = Process.GetProcessById((int)pid);
-                        if (p.ProcessName.IndexOf(processName, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            processName.IndexOf(p.ProcessName, StringComparison.OrdinalIgnoreCase) >= 0) {
-                            vol.SetMute(isMuted, Guid.Empty);
+                        string procName = NormalizeName(p.ProcessName);
+                        if (procName == target || procName.Contains(target) || target.Contains(procName)) {
+                            Guid g = Guid.Empty;
+                            vol.SetMute(isMuted, ref g);
+                            matched = true;
                         }
                     } catch {}
                 }
             }
-            return true;
+            return matched;
         } catch {
             return false;
         }
@@ -328,7 +353,8 @@ public class Program {
             dev.Activate(iid, 1, IntPtr.Zero, out o);
             var masterVol = (IAudioEndpointVolume)o;
             if (masterVol == null) return false;
-            masterVol.SetMasterVolumeLevelScalar(level, Guid.Empty);
+            Guid g = Guid.Empty;
+            masterVol.SetMasterVolumeLevelScalar(level, ref g);
             return true;
         } catch {
             return false;
@@ -344,7 +370,8 @@ public class Program {
             dev.Activate(iid, 1, IntPtr.Zero, out o);
             var masterVol = (IAudioEndpointVolume)o;
             if (masterVol == null) return false;
-            masterVol.SetMute(isMuted, Guid.Empty);
+            Guid g = Guid.Empty;
+            masterVol.SetMute(isMuted, ref g);
             return true;
         } catch {
             return false;
@@ -352,7 +379,7 @@ public class Program {
     }
 
     public static void Main(string[] args) {
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
+        Console.OutputEncoding = Encoding.UTF8;
 
         if (args.Length > 0 && args[0] != "server") {
             string action = args[0].ToLowerInvariant();
@@ -376,37 +403,44 @@ public class Program {
             return;
         }
 
-        // Server loop over standard input
+        // Standard JSON RPC Protocol loop
         while (true) {
             string line = Console.ReadLine();
             if (line == null || line == "exit") break;
             if (string.IsNullOrWhiteSpace(line)) continue;
 
+            int reqId = ExtractJsonInt(line, "id", 0);
+
             try {
-                // Parse simple JSON: {"action":"list"}, {"action":"peaks"}, {"action":"set-process-volume","processName":"...","volume":0.8}, ...
-                if (line.Contains("\"list\"")) {
-                    Console.WriteLine(GetSessionsJson());
-                } else if (line.Contains("\"peaks\"")) {
-                    Console.WriteLine(GetPeaksJson());
+                if (line.Contains("\"peaks\"")) {
+                    string peaks = GetPeaksJson();
+                    Console.WriteLine(string.Format("{{\"id\":{0},\"data\":{1}}}", reqId, peaks));
+                } else if (line.Contains("\"list\"")) {
+                    string sessions = GetSessionsJson();
+                    Console.WriteLine(string.Format("{{\"id\":{0},\"data\":{1}}}", reqId, sessions));
                 } else if (line.Contains("\"set-process-volume\"")) {
                     string proc = ExtractJsonString(line, "processName");
                     float vol = ExtractJsonFloat(line, "volume", 1.0f);
-                    Console.WriteLine(SetProcessVolume(proc, vol));
+                    bool res = SetProcessVolume(proc, vol);
+                    Console.WriteLine(string.Format("{{\"id\":{0},\"data\":{1}}}", reqId, res ? "true" : "false"));
                 } else if (line.Contains("\"set-process-mute\"")) {
                     string proc = ExtractJsonString(line, "processName");
                     bool muted = ExtractJsonBool(line, "isMuted");
-                    Console.WriteLine(SetProcessMute(proc, muted));
+                    bool res = SetProcessMute(proc, muted);
+                    Console.WriteLine(string.Format("{{\"id\":{0},\"data\":{1}}}", reqId, res ? "true" : "false"));
                 } else if (line.Contains("\"set-master-volume\"")) {
                     float vol = ExtractJsonFloat(line, "volume", 1.0f);
-                    Console.WriteLine(SetMasterVolume(vol));
+                    bool res = SetMasterVolume(vol);
+                    Console.WriteLine(string.Format("{{\"id\":{0},\"data\":{1}}}", reqId, res ? "true" : "false"));
                 } else if (line.Contains("\"set-master-mute\"")) {
                     bool muted = ExtractJsonBool(line, "isMuted");
-                    Console.WriteLine(SetMasterMute(muted));
+                    bool res = SetMasterMute(muted);
+                    Console.WriteLine(string.Format("{{\"id\":{0},\"data\":{1}}}", reqId, res ? "true" : "false"));
                 } else {
-                    Console.WriteLine("{}");
+                    Console.WriteLine(string.Format("{{\"id\":{0},\"data\":null}}", reqId));
                 }
             } catch {
-                Console.WriteLine("error");
+                Console.WriteLine(string.Format("{{\"id\":{0},\"error\":true}}", reqId));
             }
         }
     }
@@ -419,6 +453,19 @@ public class Program {
         int end = json.IndexOf("\"", idx);
         if (end < 0) return "";
         return json.Substring(idx, end - idx);
+    }
+
+    private static int ExtractJsonInt(string json, string key, int defaultVal) {
+        string pattern = "\"" + key + "\":";
+        int idx = json.IndexOf(pattern);
+        if (idx < 0) return defaultVal;
+        idx += pattern.Length;
+        int end = json.IndexOfAny(new char[] { ',', '}', ' ' }, idx);
+        if (end < 0) end = json.Length;
+        string val = json.Substring(idx, end - idx).Trim();
+        int i;
+        if (int.TryParse(val, out i)) return i;
+        return defaultVal;
     }
 
     private static float ExtractJsonFloat(string json, string key, float defaultVal) {
