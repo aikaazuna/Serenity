@@ -5,7 +5,7 @@ const electronDir = path.dirname(fileURLToPath(import.meta.url));
 
 /** Chemin absolu vers le script preload compilé (même dossier que main.js). */
 export function preloadScriptPath(): string {
-  return path.join(electronDir, "preload.js");
+  return path.join(electronDir, "preload.cjs");
 }
 
 /** Ressources statiques (icônes tray / fenêtre), copiées dans dist-electron au build. */

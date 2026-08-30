@@ -1,18 +1,18 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { useMixerStore } from "@/state/mixerStore";
 import type { MixerChannelId } from "@/types/mixer";
 import type { MixerGlobalShortcutBinding, OverlayNotificationItem } from "@shared/types";
 
 export function useMixerShortcuts() {
   const channels = useMixerStore((s) => s.channels);
+  const mixerEnabled = useMixerStore((s) => s.mixerEnabled);
   const adjustVolumeStep = useMixerStore((s) => s.adjustVolumeStep);
   const toggleMuteWithHud = useMixerStore((s) => s.toggleMuteWithHud);
-  const toggleHeadphoneMute = useMixerStore((s) => s.toggleHeadphoneMute);
-  const toggleStreamMute = useMixerStore((s) => s.toggleStreamMute);
   const selectedChannelSettings = useMixerStore((s) => s.selectedChannelSettings);
 
   // 1. Sync global shortcuts with Electron process (runs across all Windows games & apps)
   useEffect(() => {
+    if (!mixerEnabled) return;
     const bindings: MixerGlobalShortcutBinding[] = [];
 
     for (const chId of Object.keys(channels) as MixerChannelId[]) {
@@ -42,7 +42,13 @@ export function useMixerShortcuts() {
     if ((window as any).colorflow?.mixer?.registerShortcuts) {
       void (window as any).colorflow.mixer.registerShortcuts(bindings);
     }
-  }, [channels]);
+    // Cleanup: unregister shortcuts when mixer disabled or component unmounts
+    return () => {
+      if ((window as any).colorflow?.mixer?.unregisterShortcuts) {
+        void (window as any).colorflow.mixer.unregisterShortcuts();
+      }
+    };
+  }, [channels, mixerEnabled]);
 
   // 2. Listen to global shortcuts fired from background by Electron
   useEffect(() => {
@@ -53,14 +59,13 @@ export function useMixerShortcuts() {
         } else if (payload.action === "volDown") {
           adjustVolumeStep(payload.channelId, payload.target, -5);
         } else if (payload.action === "mute") {
-          if (payload.target === "headphone") toggleHeadphoneMute(payload.channelId);
-          else toggleStreamMute(payload.channelId);
+          toggleMuteWithHud(payload.channelId, payload.target);
         }
       });
       return () => unsub();
     }
     return undefined;
-  }, [adjustVolumeStep, toggleHeadphoneMute, toggleStreamMute]);
+  }, [adjustVolumeStep, toggleMuteWithHud]);
 
   // 3. Local keydown listener when Serenity window is focused
   useEffect(() => {
@@ -172,8 +177,8 @@ export function useMixerShortcuts() {
           }
         }
 
-        // Trigger system-wide Electron overlay window
-        if (matchedItems.length > 0 && (window as any).colorflow?.overlay?.show) {
+        // Trigger system-wide composite Electron overlay window if multiple channels matched
+        if (matchedItems.length > 1 && (window as any).colorflow?.overlay?.show) {
           (window as any).colorflow.overlay.show({
             type: "volume",
             items: matchedItems,

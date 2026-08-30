@@ -179,6 +179,231 @@ export function SettingsPage() {
         </div>
       </GlassCard>
 
+      {/* System Overlay & In-Game HUD Settings */}
+      <GlassCard className="p-5 space-y-4">
+        <div className="flex items-center justify-between border-b border-[color:var(--card-border)] pb-2.5">
+          <div>
+            <h3 className="text-[13px] font-bold text-[color:var(--text-primary)]">
+              {t.settings.overlaySection}
+            </h3>
+            <p className="text-[12px] text-tertiary mt-0.5">
+              {t.settings.overlaySectionDesc}
+            </p>
+          </div>
+          <span className="text-[10.5px] font-bold text-[#0A84FF] bg-[#0A84FF]/10 px-2.5 py-0.5 rounded-full border border-[#0A84FF]/20">
+            Top-Right HUD
+          </span>
+        </div>
+
+        <div className="divide-y divide-[color:var(--panel-border)]">
+          {/* Master Toggle */}
+          <SettingRow
+            title={t.settings.overlayEnabled}
+            description={t.settings.overlayEnabledDesc}
+            control={
+              <Switch
+                checked={settings.overlay?.enabled ?? true}
+                onCheckedChange={(checked) =>
+                  void updateSettings({
+                    overlay: { ...settings.overlay, enabled: checked },
+                  })
+                }
+              />
+            }
+          />
+
+          {/* Display Duration Slider */}
+          <SettingRow
+            title={t.settings.overlayDuration}
+            description={t.settings.overlayDurationDesc}
+            control={
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={1}
+                  max={5}
+                  step={0.5}
+                  value={settings.overlay?.durationSeconds ?? 2}
+                  onChange={(e) =>
+                    void updateSettings({
+                      overlay: {
+                        ...settings.overlay,
+                        durationSeconds: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className="w-32 accent-[#0A84FF] cursor-pointer"
+                />
+                <span className="font-mono text-xs font-bold text-[color:var(--text-primary)] w-10 text-right">
+                  {(settings.overlay?.durationSeconds ?? 2).toFixed(1)}s
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void updateSettings({
+                      overlay: { ...settings.overlay, durationSeconds: 2 },
+                    });
+                    notify("Durée d'affichage réinitialisée à 2.0s", "info");
+                  }}
+                  title="Réinitialiser à 2s"
+                  className="apple-inner-box flex h-7 items-center gap-1.5 px-2.5 text-[11px] font-semibold text-secondary hover:text-[color:var(--text-primary)] transition rounded-lg cursor-pointer shrink-0"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>2.0s</span>
+                </button>
+              </div>
+            }
+          />
+
+          {/* Theme Style */}
+          <SettingRow
+            title={t.settings.overlayTheme}
+            control={
+              <Select
+                value={settings.overlay?.theme ?? "glass"}
+                onValueChange={(v) =>
+                  void updateSettings({
+                    overlay: {
+                      ...settings.overlay,
+                      theme: v as "glass" | "oled" | "frost",
+                    },
+                  })
+                }
+                options={[
+                  { value: "glass", label: t.settings.overlayThemeGlass },
+                  { value: "oled", label: t.settings.overlayThemeOled },
+                  { value: "frost", label: t.settings.overlayThemeFrost },
+                ]}
+              />
+            }
+          />
+
+          {/* Replays Notification Toggle */}
+          <SettingRow
+            title={t.settings.overlayShowReplays}
+            description={t.settings.overlayShowReplaysDesc}
+            control={
+              <Switch
+                checked={settings.overlay?.showReplayAlerts ?? true}
+                onCheckedChange={(checked) =>
+                  void updateSettings({
+                    overlay: { ...settings.overlay, showReplayAlerts: checked },
+                  })
+                }
+              />
+            }
+          />
+
+          {/* Mic Status Notification Toggle */}
+          <SettingRow
+            title={t.settings.overlayShowMic}
+            description={t.settings.overlayShowMicDesc}
+            control={
+              <Switch
+                checked={settings.overlay?.showMicAlerts ?? true}
+                onCheckedChange={(checked) =>
+                  void updateSettings({
+                    overlay: { ...settings.overlay, showMicAlerts: checked },
+                  })
+                }
+              />
+            }
+          />
+
+          {/* Live Preview Test Buttons */}
+          <SettingRow
+            title={t.settings.overlayTestBtn}
+            description={t.settings.overlayTestDesc}
+            control={
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    if (typeof window !== "undefined" && (window as any).colorflow?.overlay?.show) {
+                      (window as any).colorflow.overlay.show({
+                        type: "volume",
+                        items: [
+                          {
+                            id: "game-test",
+                            channelId: "game",
+                            channelName: "Jeu (Game)",
+                            channelColor: "#30D158",
+                            target: "headphone",
+                            volume: 85,
+                            isMuted: false,
+                            actionType: "up",
+                          },
+                        ],
+                        settings: settings.overlay,
+                      });
+                      notify("Aperçu Volume envoyé à l'écran Windows", "info");
+                    }
+                  }}
+                >
+                  Tester Volume
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    if (typeof window !== "undefined" && (window as any).colorflow?.overlay?.show) {
+                      (window as any).colorflow.overlay.show({
+                        type: "clip",
+                        title: "Clip 30s enregistré !",
+                        subtitle: "Pistes audio isolées (Jeu + Discord + Micro)",
+                        items: [
+                          {
+                            id: "clip-test",
+                            channelName: "Clip Replay",
+                            channelColor: "#FF453A",
+                            target: "headphone",
+                            volume: 100,
+                            isMuted: false,
+                            actionType: "set",
+                          },
+                        ],
+                        settings: settings.overlay,
+                      });
+                      notify("Aperçu Clip envoyé à l'écran Windows", "info");
+                    }
+                  }}
+                >
+                  Tester Clip
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    if (typeof window !== "undefined" && (window as any).colorflow?.overlay?.show) {
+                      (window as any).colorflow.overlay.show({
+                        type: "mic",
+                        items: [
+                          {
+                            id: "mic-test",
+                            channelId: "mic",
+                            channelName: "Microphone",
+                            channelColor: "#FF9F0A",
+                            target: "headphone",
+                            volume: 0,
+                            isMuted: true,
+                            actionType: "mute",
+                          },
+                        ],
+                        settings: settings.overlay,
+                      });
+                      notify("Aperçu Micro envoyé à l'écran Windows", "info");
+                    }
+                  }}
+                >
+                  Tester Micro
+                </Button>
+              </div>
+            }
+          />
+        </div>
+      </GlassCard>
+
       {/* General Settings */}
       <GlassCard className="p-5">
         <h3 className="mb-2 text-[13px] font-semibold text-[color:var(--text-primary)]">{t.settings.general}</h3>

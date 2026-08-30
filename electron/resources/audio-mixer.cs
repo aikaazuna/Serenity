@@ -82,14 +82,54 @@ public class Program {
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int GetSessionDelegate(IntPtr thisPtr, int index, out IntPtr session);
 
+    // Cache PID -> ProcessName for ultra-fast peak polling (<0.1ms per poll)
+    private static readonly Dictionary<uint, string> _pidNameCache = new Dictionary<uint, string>();
+    private static readonly Dictionary<uint, DateTime> _pidCacheTime = new Dictionary<uint, DateTime>();
+
+    private static string GetProcessNameByPid(uint pid) {
+        if (pid == 0) return "System";
+        string name;
+        DateTime last;
+        lock (_pidNameCache) {
+            if (_pidNameCache.TryGetValue(pid, out name) && _pidCacheTime.TryGetValue(pid, out last)) {
+                if ((DateTime.UtcNow - last).TotalSeconds < 15.0) {
+                    return name;
+                }
+            }
+        }
+
+        string procName = "";
+        try {
+            var p = Process.GetProcessById((int)pid);
+            procName = p.ProcessName;
+        } catch {
+            procName = "";
+        }
+
+        lock (_pidNameCache) {
+            _pidNameCache[pid] = procName;
+            _pidCacheTime[pid] = DateTime.UtcNow;
+        }
+        return procName;
+    }
+
+    private static IMMDeviceEnumerator _enumerator = null;
+
     private static IMMDevice GetDefaultRenderDevice() {
         try {
-            var enumerator = (IMMDeviceEnumerator)(new MMDeviceEnumeratorComObject());
+            if (_enumerator == null) {
+                _enumerator = (IMMDeviceEnumerator)(new MMDeviceEnumeratorComObject());
+            }
             IMMDevice dev;
-            int hr = enumerator.GetDefaultAudioEndpoint(0, 1, out dev);
+            int hr = _enumerator.GetDefaultAudioEndpoint(0, 1, out dev);
+            if (hr == 0 && dev != null) return dev;
+            // If device changed or stale, recreate enumerator
+            _enumerator = (IMMDeviceEnumerator)(new MMDeviceEnumeratorComObject());
+            hr = _enumerator.GetDefaultAudioEndpoint(0, 1, out dev);
             if (hr == 0 && dev != null) return dev;
             return null;
         } catch {
+            _enumerator = null;
             return null;
         }
     }
@@ -102,78 +142,153 @@ public class Program {
         return name.Trim().ToLowerInvariant();
     }
 
-    public static string GetSessionsJson() {
+    private static bool IsMatchingProcess(string procName, string target) {
+        if (string.IsNullOrEmpty(procName) || string.IsNullOrEmpty(target)) return false;
+        string normProc = NormalizeName(procName);
+        string normTarget = NormalizeName(target);
+        if (normProc.Length == 0 || normTarget.Length == 0) return false;
+
+        // Exact match
+        if (normProc == normTarget) return true;
+
+        // Safe substring match (only if identifier is >= 3 chars to prevent short false positives)
+        if (normTarget.Length >= 3 && normProc.Contains(normTarget)) return true;
+        if (normProc.Length >= 3 && normTarget.Contains(normProc)) return true;
+
+        return false;
+    }
+
+    private static IAudioSessionManager2 _sessionMgr = null;
+    private static IAudioMeterInformation _masterMeter = null;
+    private static IAudioEndpointVolume _masterEndpoint = null;
+
+    private static IAudioSessionManager2 GetSessionManager() {
         try {
+            if (_sessionMgr != null) return _sessionMgr;
             var dev = GetDefaultRenderDevice();
-            if (dev == null) return "[]";
+            if (dev == null) return null;
             Guid iid = typeof(IAudioSessionManager2).GUID;
             object o;
-            dev.Activate(iid, 1, IntPtr.Zero, out o);
-            var mgr = (IAudioSessionManager2)o;
+            int hr = dev.Activate(iid, 1, IntPtr.Zero, out o);
+            if (hr == 0 && o != null) {
+                _sessionMgr = (IAudioSessionManager2)o;
+                return _sessionMgr;
+            }
+            return null;
+        } catch {
+            _sessionMgr = null;
+            return null;
+        }
+    }
+
+    private static IAudioMeterInformation GetMasterMeter() {
+        try {
+            if (_masterMeter != null) return _masterMeter;
+            var dev = GetDefaultRenderDevice();
+            if (dev == null) return null;
+            Guid meterId = typeof(IAudioMeterInformation).GUID;
+            object meterObj;
+            int hr = dev.Activate(meterId, 1, IntPtr.Zero, out meterObj);
+            if (hr == 0 && meterObj != null) {
+                _masterMeter = (IAudioMeterInformation)meterObj;
+                return _masterMeter;
+            }
+            return null;
+        } catch {
+            _masterMeter = null;
+            return null;
+        }
+    }
+
+    private static IAudioEndpointVolume GetMasterEndpointVolume() {
+        try {
+            if (_masterEndpoint != null) return _masterEndpoint;
+            var dev = GetDefaultRenderDevice();
+            if (dev == null) return null;
+            Guid iid = typeof(IAudioEndpointVolume).GUID;
+            object o;
+            int hr = dev.Activate(iid, 1, IntPtr.Zero, out o);
+            if (hr == 0 && o != null) {
+                _masterEndpoint = (IAudioEndpointVolume)o;
+                return _masterEndpoint;
+            }
+            return null;
+        } catch {
+            _masterEndpoint = null;
+            return null;
+        }
+    }
+
+    public static string GetSessionsJson() {
+        try {
+            var mgr = GetSessionManager();
             if (mgr == null) return "[]";
 
             IntPtr enumPtr;
             int hr = mgr.GetSessionEnumerator(out enumPtr);
-            if (hr != 0 || enumPtr == IntPtr.Zero) return "[]";
-
-            IntPtr vtable = Marshal.ReadIntPtr(enumPtr);
-            IntPtr getCountPtr = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
-            IntPtr getSessionPtr = Marshal.ReadIntPtr(vtable, 4 * IntPtr.Size);
-
-            var getCount = (GetCountDelegate)Marshal.GetDelegateForFunctionPointer(getCountPtr, typeof(GetCountDelegate));
-            var getSession = (GetSessionDelegate)Marshal.GetDelegateForFunctionPointer(getSessionPtr, typeof(GetSessionDelegate));
-
-            int count = 0;
-            getCount(enumPtr, out count);
-
-            var list = new List<string>();
-            var seenPids = new HashSet<uint>();
-
-            for (int i = 0; i < count; i++) {
-                IntPtr sPtr;
-                getSession(enumPtr, i, out sPtr);
-                if (sPtr == IntPtr.Zero) continue;
-
-                var ctl = (IAudioSessionControl2)Marshal.GetObjectForIUnknown(sPtr);
-                var vol = (ISimpleAudioVolume)Marshal.GetObjectForIUnknown(sPtr);
-
-                uint pid = 0;
-                ctl.GetProcessId(out pid);
-                if (seenPids.Contains(pid) || pid == 0) continue;
-                seenPids.Add(pid);
-
-                float level = 1.0f;
-                vol.GetMasterVolume(out level);
-
-                bool isMuted = false;
-                vol.GetMute(out isMuted);
-
-                string procName = "System";
-                try {
-                    var p = Process.GetProcessById((int)pid);
-                    procName = p.ProcessName;
-                } catch {}
-
-                list.Add(string.Format(CultureInfo.InvariantCulture, "{{\"pid\":{0},\"processName\":\"{1}\",\"volume\":{2},\"isMuted\":{3}}}",
-                    pid, procName.Replace("\\", "\\\\").Replace("\"", "\\\""), (int)Math.Round(level * 100), isMuted ? "true" : "false"));
+            if (hr != 0 || enumPtr == IntPtr.Zero) {
+                _sessionMgr = null; // Reconnect next time
+                return "[]";
             }
 
-            return "[" + string.Join(",", list.ToArray()) + "]";
+            try {
+                IntPtr vtable = Marshal.ReadIntPtr(enumPtr);
+                IntPtr getCountPtr = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
+                IntPtr getSessionPtr = Marshal.ReadIntPtr(vtable, 4 * IntPtr.Size);
+
+                var getCount = (GetCountDelegate)Marshal.GetDelegateForFunctionPointer(getCountPtr, typeof(GetCountDelegate));
+                var getSession = (GetSessionDelegate)Marshal.GetDelegateForFunctionPointer(getSessionPtr, typeof(GetSessionDelegate));
+
+                int count = 0;
+                getCount(enumPtr, out count);
+
+                var list = new List<string>();
+                var seenPids = new HashSet<uint>();
+
+                for (int i = 0; i < count; i++) {
+                    IntPtr sPtr;
+                    getSession(enumPtr, i, out sPtr);
+                    if (sPtr == IntPtr.Zero) continue;
+
+                    try {
+                        var ctl = (IAudioSessionControl2)Marshal.GetObjectForIUnknown(sPtr);
+                        var vol = (ISimpleAudioVolume)Marshal.GetObjectForIUnknown(sPtr);
+
+                        uint pid = 0;
+                        ctl.GetProcessId(out pid);
+                        if (seenPids.Contains(pid) || pid == 0) continue;
+                        seenPids.Add(pid);
+
+                        float level = 1.0f;
+                        vol.GetMasterVolume(out level);
+
+                        bool isMuted = false;
+                        vol.GetMute(out isMuted);
+
+                        string procName = GetProcessNameByPid(pid);
+                        if (string.IsNullOrEmpty(procName)) continue;
+
+                        list.Add(string.Format(CultureInfo.InvariantCulture, "{{\"pid\":{0},\"processName\":\"{1}\",\"volume\":{2},\"isMuted\":{3}}}",
+                            pid, procName.Replace("\\", "\\\\").Replace("\"", "\\\""), (int)Math.Round(level * 100), isMuted ? "true" : "false"));
+                    } finally {
+                        Marshal.Release(sPtr);
+                    }
+                }
+
+                return "[" + string.Join(",", list.ToArray()) + "]";
+            } finally {
+                Marshal.Release(enumPtr);
+            }
         } catch {
+            _sessionMgr = null;
             return "[]";
         }
     }
 
     public static string GetPeaksJson() {
         try {
-            var dev = GetDefaultRenderDevice();
-            if (dev == null) return "{\"master\":0.0}";
-
             float masterPeak = 0f;
-            Guid meterId = typeof(IAudioMeterInformation).GUID;
-            object meterObj;
-            dev.Activate(meterId, 1, IntPtr.Zero, out meterObj);
-            var masterMeter = (IAudioMeterInformation)meterObj;
+            var masterMeter = GetMasterMeter();
             if (masterMeter != null) {
                 masterMeter.GetPeakValue(out masterPeak);
             }
@@ -181,55 +296,62 @@ public class Program {
             var map = new List<string>();
             map.Add(string.Format(CultureInfo.InvariantCulture, "\"master\":{0:F2}", masterPeak));
 
-            Guid iid = typeof(IAudioSessionManager2).GUID;
-            object o;
-            dev.Activate(iid, 1, IntPtr.Zero, out o);
-            var mgr = (IAudioSessionManager2)o;
+            var mgr = GetSessionManager();
             if (mgr != null) {
                 IntPtr enumPtr;
                 if (mgr.GetSessionEnumerator(out enumPtr) == 0 && enumPtr != IntPtr.Zero) {
-                    IntPtr vtable = Marshal.ReadIntPtr(enumPtr);
-                    IntPtr getCountPtr = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
-                    IntPtr getSessionPtr = Marshal.ReadIntPtr(vtable, 4 * IntPtr.Size);
+                    try {
+                        IntPtr vtable = Marshal.ReadIntPtr(enumPtr);
+                        IntPtr getCountPtr = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
+                        IntPtr getSessionPtr = Marshal.ReadIntPtr(vtable, 4 * IntPtr.Size);
 
-                    var getCount = (GetCountDelegate)Marshal.GetDelegateForFunctionPointer(getCountPtr, typeof(GetCountDelegate));
-                    var getSession = (GetSessionDelegate)Marshal.GetDelegateForFunctionPointer(getSessionPtr, typeof(GetSessionDelegate));
+                        var getCount = (GetCountDelegate)Marshal.GetDelegateForFunctionPointer(getCountPtr, typeof(GetCountDelegate));
+                        var getSession = (GetSessionDelegate)Marshal.GetDelegateForFunctionPointer(getSessionPtr, typeof(GetSessionDelegate));
 
-                    int count = 0;
-                    getCount(enumPtr, out count);
-                    var seenPids = new HashSet<uint>();
+                        int count = 0;
+                        getCount(enumPtr, out count);
+                        var seenPids = new HashSet<uint>();
 
-                    for (int i = 0; i < count; i++) {
-                        IntPtr sPtr;
-                        getSession(enumPtr, i, out sPtr);
-                        if (sPtr == IntPtr.Zero) continue;
+                        for (int i = 0; i < count; i++) {
+                            IntPtr sPtr;
+                            getSession(enumPtr, i, out sPtr);
+                            if (sPtr == IntPtr.Zero) continue;
 
-                        var ctl = (IAudioSessionControl2)Marshal.GetObjectForIUnknown(sPtr);
-                        var meter = (IAudioMeterInformation)Marshal.GetObjectForIUnknown(sPtr);
+                            try {
+                                var ctl = (IAudioSessionControl2)Marshal.GetObjectForIUnknown(sPtr);
+                                var meter = (IAudioMeterInformation)Marshal.GetObjectForIUnknown(sPtr);
 
-                        uint pid = 0;
-                        ctl.GetProcessId(out pid);
-                        if (seenPids.Contains(pid) || pid == 0) continue;
-                        seenPids.Add(pid);
+                                uint pid = 0;
+                                ctl.GetProcessId(out pid);
+                                if (seenPids.Contains(pid) || pid == 0) continue;
+                                seenPids.Add(pid);
 
-                        float peak = 0f;
-                        if (meter != null) {
-                            meter.GetPeakValue(out peak);
-                        }
+                                float peak = 0f;
+                                if (meter != null) {
+                                    meter.GetPeakValue(out peak);
+                                }
 
-                        try {
-                            var p = Process.GetProcessById((int)pid);
-                            string cleanName = NormalizeName(p.ProcessName);
-                            if (!string.IsNullOrEmpty(cleanName)) {
-                                map.Add(string.Format(CultureInfo.InvariantCulture, "\"{0}\":{1:F2}", cleanName, peak));
+                                string procName = GetProcessNameByPid(pid);
+                                string cleanName = NormalizeName(procName);
+                                if (!string.IsNullOrEmpty(cleanName)) {
+                                    map.Add(string.Format(CultureInfo.InvariantCulture, "\"{0}\":{1:F2}", cleanName, peak));
+                                }
+                            } finally {
+                                Marshal.Release(sPtr);
                             }
-                        } catch {}
+                        }
+                    } finally {
+                        Marshal.Release(enumPtr);
                     }
+                } else {
+                    _sessionMgr = null;
                 }
             }
 
             return "{" + string.Join(",", map.ToArray()) + "}";
         } catch {
+            _sessionMgr = null;
+            _masterMeter = null;
             return "{\"master\":0.0}";
         }
     }
@@ -239,52 +361,59 @@ public class Program {
             string target = NormalizeName(processName);
             if (string.IsNullOrEmpty(target)) return false;
 
-            var dev = GetDefaultRenderDevice();
-            if (dev == null) return false;
-            Guid iid = typeof(IAudioSessionManager2).GUID;
-            object o;
-            dev.Activate(iid, 1, IntPtr.Zero, out o);
-            var mgr = (IAudioSessionManager2)o;
+            var mgr = GetSessionManager();
             if (mgr == null) return false;
 
             IntPtr enumPtr;
-            if (mgr.GetSessionEnumerator(out enumPtr) != 0 || enumPtr == IntPtr.Zero) return false;
-
-            IntPtr vtable = Marshal.ReadIntPtr(enumPtr);
-            IntPtr getCountPtr = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
-            IntPtr getSessionPtr = Marshal.ReadIntPtr(vtable, 4 * IntPtr.Size);
-
-            var getCount = (GetCountDelegate)Marshal.GetDelegateForFunctionPointer(getCountPtr, typeof(GetCountDelegate));
-            var getSession = (GetSessionDelegate)Marshal.GetDelegateForFunctionPointer(getSessionPtr, typeof(GetSessionDelegate));
-
-            int count = 0;
-            getCount(enumPtr, out count);
-            bool matched = false;
-
-            for (int i = 0; i < count; i++) {
-                IntPtr sPtr;
-                getSession(enumPtr, i, out sPtr);
-                if (sPtr == IntPtr.Zero) continue;
-
-                var ctl = (IAudioSessionControl2)Marshal.GetObjectForIUnknown(sPtr);
-                var vol = (ISimpleAudioVolume)Marshal.GetObjectForIUnknown(sPtr);
-
-                uint pid = 0;
-                ctl.GetProcessId(out pid);
-                if (pid > 0) {
-                    try {
-                        var p = Process.GetProcessById((int)pid);
-                        string procName = NormalizeName(p.ProcessName);
-                        if (procName == target || procName.Contains(target) || target.Contains(procName)) {
-                            Guid g = Guid.Empty;
-                            vol.SetMasterVolume(level, ref g);
-                            matched = true;
-                        }
-                    } catch {}
-                }
+            if (mgr.GetSessionEnumerator(out enumPtr) != 0 || enumPtr == IntPtr.Zero) {
+                _sessionMgr = null;
+                return false;
             }
-            return matched;
+
+            try {
+                IntPtr vtable = Marshal.ReadIntPtr(enumPtr);
+                IntPtr getCountPtr = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
+                IntPtr getSessionPtr = Marshal.ReadIntPtr(vtable, 4 * IntPtr.Size);
+
+                var getCount = (GetCountDelegate)Marshal.GetDelegateForFunctionPointer(getCountPtr, typeof(GetCountDelegate));
+                var getSession = (GetSessionDelegate)Marshal.GetDelegateForFunctionPointer(getSessionPtr, typeof(GetSessionDelegate));
+
+                int count = 0;
+                getCount(enumPtr, out count);
+                bool matched = false;
+
+                for (int i = 0; i < count; i++) {
+                    IntPtr sPtr;
+                    getSession(enumPtr, i, out sPtr);
+                    if (sPtr == IntPtr.Zero) continue;
+
+                    try {
+                        var ctl = (IAudioSessionControl2)Marshal.GetObjectForIUnknown(sPtr);
+                        var vol = (ISimpleAudioVolume)Marshal.GetObjectForIUnknown(sPtr);
+
+                        uint pid = 0;
+                        ctl.GetProcessId(out pid);
+                        if (pid > 0) {
+                            string procName = GetProcessNameByPid(pid);
+                            if (IsMatchingProcess(procName, target)) {
+                                Guid g = Guid.Empty;
+                                vol.SetMasterVolume(level, ref g);
+                                if (level > 0.001f) {
+                                    vol.SetMute(false, ref g);
+                                }
+                                matched = true;
+                            }
+                        }
+                    } finally {
+                        Marshal.Release(sPtr);
+                    }
+                }
+                return matched;
+            } finally {
+                Marshal.Release(enumPtr);
+            }
         } catch {
+            _sessionMgr = null;
             return false;
         }
     }
@@ -294,16 +423,111 @@ public class Program {
             string target = NormalizeName(processName);
             if (string.IsNullOrEmpty(target)) return false;
 
+            var mgr = GetSessionManager();
+            if (mgr == null) return false;
+
+            IntPtr enumPtr;
+            if (mgr.GetSessionEnumerator(out enumPtr) != 0 || enumPtr == IntPtr.Zero) {
+                _sessionMgr = null;
+                return false;
+            }
+
+            try {
+                IntPtr vtable = Marshal.ReadIntPtr(enumPtr);
+                IntPtr getCountPtr = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
+                IntPtr getSessionPtr = Marshal.ReadIntPtr(vtable, 4 * IntPtr.Size);
+
+                var getCount = (GetCountDelegate)Marshal.GetDelegateForFunctionPointer(getCountPtr, typeof(GetCountDelegate));
+                var getSession = (GetSessionDelegate)Marshal.GetDelegateForFunctionPointer(getSessionPtr, typeof(GetSessionDelegate));
+
+                int count = 0;
+                getCount(enumPtr, out count);
+                bool matched = false;
+
+                for (int i = 0; i < count; i++) {
+                    IntPtr sPtr;
+                    getSession(enumPtr, i, out sPtr);
+                    if (sPtr == IntPtr.Zero) continue;
+
+                    try {
+                        var ctl = (IAudioSessionControl2)Marshal.GetObjectForIUnknown(sPtr);
+                        var vol = (ISimpleAudioVolume)Marshal.GetObjectForIUnknown(sPtr);
+
+                        uint pid = 0;
+                        ctl.GetProcessId(out pid);
+                        if (pid > 0) {
+                            string procName = GetProcessNameByPid(pid);
+                            if (IsMatchingProcess(procName, target)) {
+                                Guid g = Guid.Empty;
+                                vol.SetMute(isMuted, ref g);
+                                matched = true;
+                            }
+                        }
+                    } finally {
+                        Marshal.Release(sPtr);
+                    }
+                }
+                return matched;
+            } finally {
+                Marshal.Release(enumPtr);
+            }
+        } catch {
+            _sessionMgr = null;
+            return false;
+        }
+    }
+
+    public static bool SetMasterVolume(float level) {
+        try {
+            var masterVol = GetMasterEndpointVolume();
+            if (masterVol == null) return false;
+            Guid g = Guid.Empty;
+            masterVol.SetMasterVolumeLevelScalar(level, ref g);
+            if (level > 0.001f) {
+                masterVol.SetMute(false, ref g);
+            }
+            return true;
+        } catch {
+            _masterEndpoint = null;
+            return false;
+        }
+    }
+
+    public static bool SetMasterMute(bool isMuted) {
+        try {
+            var masterVol = GetMasterEndpointVolume();
+            if (masterVol == null) return false;
+            Guid g = Guid.Empty;
+            masterVol.SetMute(isMuted, ref g);
+            return true;
+        } catch {
+            _masterEndpoint = null;
+            return false;
+        }
+    }
+
+    public static bool ResetAllVolumes() {
+        try {
             var dev = GetDefaultRenderDevice();
             if (dev == null) return false;
+            Guid masterIid = typeof(IAudioEndpointVolume).GUID;
+            object masterObj;
+            dev.Activate(masterIid, 1, IntPtr.Zero, out masterObj);
+            var masterVol = (IAudioEndpointVolume)masterObj;
+            if (masterVol != null) {
+                Guid g = Guid.Empty;
+                masterVol.SetMute(false, ref g);
+                masterVol.SetMasterVolumeLevelScalar(1.0f, ref g);
+            }
+
             Guid iid = typeof(IAudioSessionManager2).GUID;
             object o;
             dev.Activate(iid, 1, IntPtr.Zero, out o);
             var mgr = (IAudioSessionManager2)o;
-            if (mgr == null) return false;
+            if (mgr == null) return true;
 
             IntPtr enumPtr;
-            if (mgr.GetSessionEnumerator(out enumPtr) != 0 || enumPtr == IntPtr.Zero) return false;
+            if (mgr.GetSessionEnumerator(out enumPtr) != 0 || enumPtr == IntPtr.Zero) return true;
 
             IntPtr vtable = Marshal.ReadIntPtr(enumPtr);
             IntPtr getCountPtr = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
@@ -314,70 +538,22 @@ public class Program {
 
             int count = 0;
             getCount(enumPtr, out count);
-            bool matched = false;
-
             for (int i = 0; i < count; i++) {
                 IntPtr sPtr;
                 getSession(enumPtr, i, out sPtr);
                 if (sPtr == IntPtr.Zero) continue;
-
-                var ctl = (IAudioSessionControl2)Marshal.GetObjectForIUnknown(sPtr);
                 var vol = (ISimpleAudioVolume)Marshal.GetObjectForIUnknown(sPtr);
-
-                uint pid = 0;
-                ctl.GetProcessId(out pid);
-                if (pid > 0) {
-                    try {
-                        var p = Process.GetProcessById((int)pid);
-                        string procName = NormalizeName(p.ProcessName);
-                        if (procName == target || procName.Contains(target) || target.Contains(procName)) {
-                            Guid g = Guid.Empty;
-                            vol.SetMute(isMuted, ref g);
-                            matched = true;
-                        }
-                    } catch {}
-                }
+                Guid g = Guid.Empty;
+                vol.SetMute(false, ref g);
+                vol.SetMasterVolume(1.0f, ref g);
             }
-            return matched;
-        } catch {
-            return false;
-        }
-    }
-
-    public static bool SetMasterVolume(float level) {
-        try {
-            var dev = GetDefaultRenderDevice();
-            if (dev == null) return false;
-            Guid iid = typeof(IAudioEndpointVolume).GUID;
-            object o;
-            dev.Activate(iid, 1, IntPtr.Zero, out o);
-            var masterVol = (IAudioEndpointVolume)o;
-            if (masterVol == null) return false;
-            Guid g = Guid.Empty;
-            masterVol.SetMasterVolumeLevelScalar(level, ref g);
             return true;
         } catch {
             return false;
         }
     }
 
-    public static bool SetMasterMute(bool isMuted) {
-        try {
-            var dev = GetDefaultRenderDevice();
-            if (dev == null) return false;
-            Guid iid = typeof(IAudioEndpointVolume).GUID;
-            object o;
-            dev.Activate(iid, 1, IntPtr.Zero, out o);
-            var masterVol = (IAudioEndpointVolume)o;
-            if (masterVol == null) return false;
-            Guid g = Guid.Empty;
-            masterVol.SetMute(isMuted, ref g);
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
+    [STAThread]
     public static void Main(string[] args) {
         Console.OutputEncoding = Encoding.UTF8;
 
@@ -387,6 +563,8 @@ public class Program {
                 Console.WriteLine(GetSessionsJson());
             } else if (action == "peaks") {
                 Console.WriteLine(GetPeaksJson());
+            } else if (action == "reset") {
+                Console.WriteLine(ResetAllVolumes());
             } else if (action == "set-master-volume" && args.Length > 1) {
                 float v = float.Parse(args[1], CultureInfo.InvariantCulture);
                 Console.WriteLine(SetMasterVolume(v));
@@ -418,6 +596,9 @@ public class Program {
                 } else if (line.Contains("\"list\"")) {
                     string sessions = GetSessionsJson();
                     Console.WriteLine(string.Format("{{\"id\":{0},\"data\":{1}}}", reqId, sessions));
+                } else if (line.Contains("\"reset-volumes\"")) {
+                    bool res = ResetAllVolumes();
+                    Console.WriteLine(string.Format("{{\"id\":{0},\"data\":{1}}}", reqId, res ? "true" : "false"));
                 } else if (line.Contains("\"set-process-volume\"")) {
                     string proc = ExtractJsonString(line, "processName");
                     float vol = ExtractJsonFloat(line, "volume", 1.0f);

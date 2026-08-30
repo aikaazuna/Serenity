@@ -1,16 +1,30 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="fr" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self';"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self';"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Serenity Hub — Overlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      html, body, #root {
+        background-color: transparent !important;
+        background: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: hidden !important;
+      }
+    </style>
   </head>
-  <body class="bg-transparent overflow-hidden" style="user-select: none; -webkit-app-region: no-drag">
-    <div id="root"></div>
+  <body class="bg-transparent overflow-hidden" style="user-select: none; -webkit-app-region: no-drag; margin: 0; padding: 0;">
+    <div id="root" style="background: transparent !important;"></div>
     <script type="module" src="/src/overlay-entry.tsx"></script>
   </body>
 </html>

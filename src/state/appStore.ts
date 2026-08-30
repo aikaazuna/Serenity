@@ -70,12 +70,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   isPickerActive: false,
 
   hydrate: async () => {
-    const [settings, history, favorites, collections] = await Promise.all([
+    const [storedSettings, history, favorites, collections] = await Promise.all([
       getStoreValue("settings"),
       getStoreValue("history"),
       getStoreValue("favorites"),
       getStoreValue("collections"),
     ]);
+    const settings: AppSettings = {
+      ...DEFAULT_SETTINGS,
+      ...storedSettings,
+      overlay: {
+        ...DEFAULT_SETTINGS.overlay,
+        ...(storedSettings?.overlay || {}),
+      },
+    };
     set({ settings, history, favorites, collections, isHydrated: true });
   },
 

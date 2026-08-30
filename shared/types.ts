@@ -107,6 +107,15 @@ export type DefaultCopyFormat =
 
 export type AppLanguage = "fr" | "en";
 
+export interface OverlaySettings {
+  enabled: boolean;
+  durationSeconds: number;
+  theme: "glass" | "oled" | "frost";
+  showReplayAlerts: boolean;
+  showMicAlerts: boolean;
+  showChannelIcons: boolean;
+}
+
 export interface AppSettings {
   pickerShortcut: string;
   launchAtStartup: boolean;
@@ -116,6 +125,7 @@ export interface AppSettings {
   language: AppLanguage;
   closeToTray: boolean;
   magnifierZoom: number;
+  overlay: OverlaySettings;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -127,6 +137,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   language: "fr",
   closeToTray: true,
   magnifierZoom: 8,
+  overlay: {
+    enabled: true,
+    durationSeconds: 2,
+    theme: "glass",
+    showReplayAlerts: true,
+    showMicAlerts: true,
+    showChannelIcons: true,
+  },
 };
 
 export interface PickerCapturedPayload {
@@ -280,6 +298,8 @@ export const IpcChannels = {
   MixerSetProcessMute: "mixer:set-process-mute",
   MixerSetMasterVolume: "mixer:set-master-volume",
   MixerSetMasterMute: "mixer:set-master-mute",
+  MixerResetVolumes: "mixer:reset-volumes",
+  MixerUnregisterShortcuts: "mixer:unregister-shortcuts",
   MixerShowHud: "mixer:show-hud",
 } as const;
 
@@ -312,11 +332,12 @@ export interface OverlayNotificationItem {
 }
 
 export interface OverlayNotificationPayload {
-  type: "volume" | "clip" | "info";
+  type: "volume" | "clip" | "mic" | "info";
   title?: string;
   subtitle?: string;
   clipDurationSeconds?: number;
   items: OverlayNotificationItem[];
+  settings?: Partial<OverlaySettings>;
 }
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];

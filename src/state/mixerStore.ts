@@ -75,8 +75,8 @@ const defaultChannels: Record<MixerChannelId, MixerChannel> = {
     name: "Game",
     color: "#30D158",
     accentGradient: "from-[#30D158] to-[#1F9A3B]",
-    headphoneVolume: 85,
-    streamVolume: 75,
+    headphoneVolume: 100,
+    streamVolume: 100,
     headphoneMuted: false,
     streamMuted: false,
     includeInHeadphones: true,
@@ -101,8 +101,8 @@ const defaultChannels: Record<MixerChannelId, MixerChannel> = {
     name: "Chat",
     color: "#00A6FB",
     accentGradient: "from-[#00A6FB] to-[#0582CA]",
-    headphoneVolume: 90,
-    streamVolume: 80,
+    headphoneVolume: 100,
+    streamVolume: 100,
     headphoneMuted: false,
     streamMuted: false,
     includeInHeadphones: true,
@@ -127,8 +127,8 @@ const defaultChannels: Record<MixerChannelId, MixerChannel> = {
     name: "Média",
     color: "#FF2D55",
     accentGradient: "from-[#FF2D55] to-[#D00036]",
-    headphoneVolume: 65,
-    streamVolume: 50,
+    headphoneVolume: 100,
+    streamVolume: 100,
     headphoneMuted: false,
     streamMuted: false,
     includeInHeadphones: true,
@@ -152,8 +152,8 @@ const defaultChannels: Record<MixerChannelId, MixerChannel> = {
     name: "Aux",
     color: "#BF5AF2",
     accentGradient: "from-[#BF5AF2] to-[#9128C4]",
-    headphoneVolume: 60,
-    streamVolume: 60,
+    headphoneVolume: 100,
+    streamVolume: 100,
     headphoneMuted: false,
     streamMuted: false,
     includeInHeadphones: true,
@@ -177,7 +177,7 @@ const defaultChannels: Record<MixerChannelId, MixerChannel> = {
     color: "#FF9F0A",
     accentGradient: "from-[#FF9F0A] to-[#C97200]",
     headphoneVolume: 0,
-    streamVolume: 85,
+    streamVolume: 100,
     headphoneMuted: true,
     streamMuted: false,
     includeInHeadphones: false,
@@ -221,9 +221,8 @@ const defaultCustomPresets: Record<MixerChannelId, MixerDspPreset[]> = {
 };
 
 function emitOverlayHud(hud: VolumeHudNotification | null) {
-  if (!hud || typeof window === "undefined" || !(window as any).colorflow?.mixer?.showHud) return;
-  // Send a single HUD item via the new MixerShowHud IPC channel
-  (window as any).colorflow.mixer.showHud({
+  if (!hud || typeof window === "undefined") return;
+  const overlayItem = {
     id: `${hud.channelId}-${hud.target}`,
     channelId: hud.channelId,
     channelName: hud.channelName,
@@ -232,7 +231,58 @@ function emitOverlayHud(hud: VolumeHudNotification | null) {
     volume: hud.volume,
     isMuted: hud.isMuted,
     actionType: hud.actionType,
-  });
+  };
+
+  if ((window as any).colorflow?.mixer?.showHud) {
+    void (window as any).colorflow.mixer.showHud(overlayItem);
+  } else if ((window as any).colorflow?.overlay?.showHud) {
+    void (window as any).colorflow.overlay.showHud(overlayItem);
+  } else if ((window as any).colorflow?.overlay?.show) {
+    (window as any).colorflow.overlay.show({
+      type: "volume",
+      items: [overlayItem],
+    });
+  }
+}
+
+const volumeThrottleTimers = new Map<string, any>();
+const lastSentVolumes = new Map<string, number>();
+
+function throttledSetProcessVolume(proc: string, vol: number) {
+  const key = `proc-${proc.toLowerCase()}`;
+  if (lastSentVolumes.get(key) === vol) return;
+
+  if (volumeThrottleTimers.has(key)) {
+    clearTimeout(volumeThrottleTimers.get(key));
+  }
+
+  // Immediate send if not pending or debounce 20ms trailing
+  const timer = setTimeout(() => {
+    volumeThrottleTimers.delete(key);
+    lastSentVolumes.set(key, vol);
+    if (typeof window !== "undefined" && (window as any).colorflow?.mixer?.setProcessVolume) {
+      void (window as any).colorflow.mixer.setProcessVolume(proc, vol);
+    }
+  }, 20);
+  volumeThrottleTimers.set(key, timer);
+}
+
+function throttledSetMasterVolume(vol: number) {
+  const key = "master";
+  if (lastSentVolumes.get(key) === vol) return;
+
+  if (volumeThrottleTimers.has(key)) {
+    clearTimeout(volumeThrottleTimers.get(key));
+  }
+
+  const timer = setTimeout(() => {
+    volumeThrottleTimers.delete(key);
+    lastSentVolumes.set(key, vol);
+    if (typeof window !== "undefined" && (window as any).colorflow?.mixer?.setMasterVolume) {
+      void (window as any).colorflow.mixer.setMasterVolume(vol);
+    }
+  }, 20);
+  volumeThrottleTimers.set(key, timer);
 }
 
 function applyChannelToWindows(ch: MixerChannel, mixerEnabled: boolean) {
@@ -241,13 +291,13 @@ function applyChannelToWindows(ch: MixerChannel, mixerEnabled: boolean) {
 
   const vol = ch.headphoneMuted ? 0 : ch.headphoneVolume;
   if (ch.id === "master") {
-    void (window as any).colorflow.mixer.setMasterVolume(vol);
+    throttledSetMasterVolume(vol);
     void (window as any).colorflow.mixer.setMasterMute(ch.headphoneMuted);
   } else {
     for (const app of ch.assignedApps) {
-      const proc = app.executable || app.name;
-      if (proc) {
-        void (window as any).colorflow.mixer.setProcessVolume(proc, vol);
+      const proc = (app.executable || app.name || "").trim();
+      if (proc && proc !== "System" && proc !== "Système Windows") {
+        throttledSetProcessVolume(proc, vol);
         void (window as any).colorflow.mixer.setProcessMute(proc, ch.headphoneMuted);
       }
     }
@@ -323,6 +373,10 @@ export const useMixerStore = create<MixerStore>()(
         for (const chId of Object.keys(st.channels) as MixerChannelId[]) {
           applyChannelToWindows(st.channels[chId], enabled);
         }
+        // Reset per-process volumes to 100% on Windows when disabling the mixer
+        if (!enabled && process.platform === 'win32') {
+          void (window as any).colorflow.mixer.resetVolumes();
+        }
       },
 
       toggleMixerEnabled: () => {
@@ -331,6 +385,10 @@ export const useMixerStore = create<MixerStore>()(
         const st = get();
         for (const chId of Object.keys(st.channels) as MixerChannelId[]) {
           applyChannelToWindows(st.channels[chId], next);
+        }
+        // When disabling the mixer, reset all process volumes to 100% on Windows
+        if (!next && process.platform === 'win32') {
+          void (window as any).colorflow.mixer.resetVolumes();
         }
       },
 
@@ -765,7 +823,10 @@ export const useMixerStore = create<MixerStore>()(
         }
       },
 
-      resetMixer: () =>
+      resetMixer: () => {
+        if (typeof window !== "undefined" && (window as any).colorflow?.mixer?.resetVolumes) {
+          void (window as any).colorflow.mixer.resetVolumes();
+        }
         set({
           mixerEnabled: true,
           channels: defaultChannels,
@@ -773,10 +834,11 @@ export const useMixerStore = create<MixerStore>()(
           customDspPresets: defaultCustomPresets,
           channelPeaks: defaultChannelPeaks,
           chatMix: 0,
-        }),
+        });
+      },
     }),
     {
-      name: "serenity-mixer-storage-v9",
+      name: "serenity-mixer-storage-v10",
     }
   )
 );

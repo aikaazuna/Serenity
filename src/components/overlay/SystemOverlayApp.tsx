@@ -1,16 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { OverlayNotificationPayload } from "@shared/types";
 import {
   Volume2,
-  Volume1,
-  VolumeX,
   Sliders,
   Gamepad2,
   Mic2,
   Music,
   Radio,
   Mic,
+  MicOff,
   Film,
   Layers,
 } from "lucide-react";
@@ -29,19 +28,38 @@ const getChannelIcon = (id?: string) => {
 
 export const SystemOverlayApp: React.FC = () => {
   const [notification, setNotification] = useState<OverlayNotificationPayload | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const dismissTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleNewPayload = (payload: OverlayNotificationPayload) => {
+    if (!payload || !payload.items || payload.items.length === 0) return;
+    setNotification(payload);
+    setIsOpen(true);
+
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+    }
+    const durationMs = Math.max(1000, Math.round((payload.settings?.durationSeconds ?? 2) * 1000));
+    dismissTimerRef.current = setTimeout(() => {
+      setIsOpen(false);
+    }, durationMs);
+  };
 
   useEffect(() => {
     // 1. Initial data check if window opened with payload
     if ((window as any).colorflow?.overlay?.requestInit) {
-      (window as any).colorflow.overlay.requestInit().then((initData: OverlayNotificationPayload | null) => {
-        if (initData) setNotification(initData);
-      });
+      (window as any).colorflow.overlay
+        .requestInit()
+        .then((initData: OverlayNotificationPayload | null) => {
+          if (initData) handleNewPayload(initData);
+        })
+        .catch(() => {});
     }
 
     // 2. Listen to live IPC overlay data from Electron
     if ((window as any).colorflow?.overlay?.onData) {
       const unsub = (window as any).colorflow.overlay.onData((payload: OverlayNotificationPayload) => {
-        setNotification(payload);
+        handleNewPayload(payload);
       });
       return () => {
         unsub();
@@ -50,168 +68,404 @@ export const SystemOverlayApp: React.FC = () => {
     return undefined;
   }, []);
 
-  // Auto-dismiss timer (2 seconds)
-  useEffect(() => {
-    if (!notification) return undefined;
-    const timer = setTimeout(() => {
-      setNotification(null);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [notification]);
+  const firstItem = notification?.items?.[0];
+  const isMulti = Boolean(notification && notification.items && notification.items.length > 1);
+  const overlayTheme = notification?.settings?.theme || "glass";
 
-  if (!notification || !notification.items || notification.items.length === 0) {
-    return null;
-  }
+  // Distinct Theme Styles
+  const getThemeProps = () => {
+    if (overlayTheme === "oled") {
+      return {
+        cardStyle: {
+          background: "#000000",
+          border: "1px solid rgba(255, 255, 255, 0.18)",
+          boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+        },
+        textColor: "#ffffff",
+        subColor: "rgba(255, 255, 255, 0.50)",
+        trackBg: "rgba(255, 255, 255, 0.14)",
+      };
+    }
+    if (overlayTheme === "frost") {
+      return {
+        cardStyle: {
+          background: "rgba(244, 246, 252, 0.98)",
+          border: "1px solid rgba(255, 255, 255, 0.95)",
+          boxShadow: "inset 0 1px 0 #ffffff, 0 2px 8px rgba(0, 0, 0, 0.12)",
+        },
+        textColor: "#121217",
+        subColor: "rgba(0, 0, 0, 0.55)",
+        trackBg: "rgba(0, 0, 0, 0.12)",
+      };
+    }
+    // Flou translucide / Apple Glassmorphism (Default)
+    return {
+      cardStyle: {
+        background: "rgba(18, 18, 24, 0.96)",
+        border: "1px solid rgba(255, 255, 255, 0.16)",
+        boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.20), 0 2px 8px rgba(0, 0, 0, 0.40)",
+      },
+      textColor: "#ffffff",
+      subColor: "rgba(255, 255, 255, 0.55)",
+      trackBg: "rgba(255, 255, 255, 0.14)",
+    };
+  };
 
-  const isMulti = notification.items.length > 1;
-  const firstItem = notification.items[0];
-
-  if (!firstItem) return null;
+  const themeProps = getThemeProps();
 
   return (
-    <div className="w-full h-full p-2 flex items-start justify-end pointer-events-none select-none overflow-hidden">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={notification.items.map((i) => `${i.id}-${i.volume}-${i.isMuted}`).join("_")}
-          initial={{ opacity: 0, x: 50, scale: 0.94 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          exit={{ opacity: 0, x: 40, scale: 0.96 }}
-          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[340px] rounded-2xl bg-black/90 backdrop-blur-2xl border border-white/20 shadow-[0_16px_48px_rgba(0,0,0,0.8)] p-3.5 text-white pointer-events-auto"
-        >
-          {/* 1. Multiple Actions View (Composite adjustments) */}
-          {isMulti ? (
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-                <div className="w-7 h-7 rounded-lg bg-[#0A84FF]/20 text-[#0A84FF] flex items-center justify-center shrink-0">
-                  <Layers className="w-3.5 h-3.5" />
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        padding: "16px",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "flex-end",
+        boxSizing: "border-box",
+        background: "transparent",
+        backgroundColor: "transparent",
+        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      }}
+    >
+      <AnimatePresence>
+        {isOpen && notification && firstItem && (
+          <motion.div
+            key="serenity-hud-card"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              ...themeProps.cardStyle,
+              width: "328px",
+              borderRadius: "18px",
+              padding: "12px 14px",
+              color: themeProps.textColor,
+              boxSizing: "border-box",
+              pointerEvents: "none",
+            }}
+          >
+            {/* 1. Multi Actions View (2+ channels adjusted simultaneously) */}
+            {isMulti ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    borderBottom: `1px solid ${overlayTheme === "frost" ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.10)"}`,
+                    paddingBottom: "8px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "26px",
+                      height: "26px",
+                      borderRadius: "8px",
+                      backgroundColor: "rgba(10, 132, 255, 0.2)",
+                      border: "1px solid rgba(10, 132, 255, 0.4)",
+                      color: "#0A84FF",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Layers style={{ width: "14px", height: "14px" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "-0.01em" }}>
+                      Actions multiples
+                    </div>
+                    <div style={{ fontSize: "10px", color: themeProps.subColor }}>
+                      {notification.items.length} pistes modifiées simultanément
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white tracking-tight">Actions multiples</h4>
-                  <span className="text-[10px] text-white/60">
-                    {notification.items.length} pistes modifiées simultanément
-                  </span>
-                </div>
-              </div>
 
-              {/* List of adjusted channels */}
-              <div className="space-y-2">
-                {notification.items.map((item) => {
-                  return (
-                    <div key={item.id} className="space-y-1">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {notification.items.map((item) => (
+                    <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", whiteSpace: "nowrap" }}>
                           <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: item.channelColor }}
+                            style={{
+                              width: "7px",
+                              height: "7px",
+                              borderRadius: "50%",
+                              backgroundColor: item.isMuted ? "#636366" : item.channelColor,
+                              boxShadow: item.isMuted ? undefined : `0 0 6px ${item.channelColor}`,
+                              flexShrink: 0,
+                            }}
                           />
-                          <span className="text-white/80 font-medium truncate">
-                            {item.actionType === "up"
-                              ? "Volume +"
-                              : item.actionType === "down"
-                              ? "Volume -"
-                              : "Muet"}{" "}
-                            | {item.channelName} - {item.target === "headphone" ? "Personnel" : "Stream"}
+                          <span style={{ fontWeight: 600, color: themeProps.textColor, textOverflow: "ellipsis", overflow: "hidden" }}>
+                            {item.channelName} • {item.target === "headphone" ? "Casque" : "Stream"}
                           </span>
                         </div>
-                        <span className="font-mono font-bold text-white/90 shrink-0 ml-1">
-                          {item.isMuted ? "0%" : `${item.volume}%`}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, marginLeft: "6px" }}>
+                          <span
+                            style={{
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontWeight: 700,
+                              fontSize: "11px",
+                              color: item.isMuted ? themeProps.subColor : themeProps.textColor,
+                            }}
+                          >
+                            {item.volume}%
+                          </span>
+                          {item.isMuted && (
+                            <span
+                              style={{
+                                fontSize: "9px",
+                                fontWeight: 800,
+                                padding: "1px 4px",
+                                borderRadius: "3px",
+                                backgroundColor: "rgba(255, 69, 58, 0.2)",
+                                color: "#FF453A",
+                                border: "1px solid rgba(255, 69, 58, 0.4)",
+                              }}
+                            >
+                              MUET
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Mini level bar */}
-                      <div className="w-full h-1 rounded-full bg-white/15 overflow-hidden">
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "5px",
+                          borderRadius: "999px",
+                          backgroundColor: themeProps.trackBg,
+                          overflow: "hidden",
+                        }}
+                      >
                         <div
-                          className="h-full rounded-full transition-all"
                           style={{
-                            width: `${item.isMuted ? 0 : item.volume}%`,
-                            backgroundColor: item.isMuted ? "#8E8E93" : item.channelColor,
+                            height: "100%",
+                            width: `${item.volume}%`,
+                            backgroundColor: item.isMuted ? "#636366" : item.channelColor,
+                            boxShadow: item.isMuted ? undefined : `0 0 6px ${item.channelColor}`,
+                            borderRadius: "999px",
+                            transition: "width 0.12s cubic-bezier(0.2, 0.8, 0.2, 1)",
                           }}
                         />
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : notification.type === "clip" ? (
-            /* 2. Clip Capture Notification */
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center shrink-0">
-                <Film className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold text-white tracking-tight">
-                  {notification.title || "Clip 30s enregistré !"}
-                </h4>
-                <p className="text-[11px] text-white/60 truncate">
-                  {notification.subtitle || "Audio multi-pistes isolé prêt à l'édition"}
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* 3. Single Channel Volume HUD */
-            <div className="flex items-center gap-3">
-              {/* Left Accent Stripe & Channel Icon */}
-              <div className="flex items-center gap-2.5">
+            ) : notification.type === "mic" ? (
+              /* 2. Dedicated Microphone Status HUD */
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div
-                  className="w-1.5 h-10 rounded-full shrink-0"
-                  style={{ backgroundColor: firstItem.channelColor }}
-                />
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center border shrink-0"
                   style={{
-                    backgroundColor: `${firstItem.channelColor}22`,
-                    borderColor: `${firstItem.channelColor}44`,
-                    color: firstItem.channelColor,
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    backgroundColor: firstItem.isMuted ? "rgba(255, 69, 58, 0.18)" : "rgba(48, 209, 88, 0.18)",
+                    border: `1px solid ${firstItem.isMuted ? "rgba(255, 69, 58, 0.4)" : "rgba(48, 209, 88, 0.4)"}`,
+                    color: firstItem.isMuted ? "#FF453A" : "#30D158",
+                    boxShadow: `0 0 12px ${firstItem.isMuted ? "rgba(255, 69, 58, 0.25)" : "rgba(48, 209, 88, 0.25)"}`,
                   }}
                 >
-                  {React.createElement(getChannelIcon(firstItem.channelId), {
-                    className: "w-4 h-4",
-                  })}
+                  {firstItem.isMuted ? (
+                    <MicOff style={{ width: "18px", height: "18px" }} />
+                  ) : (
+                    <Mic style={{ width: "18px", height: "18px" }} />
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: themeProps.textColor }}>
+                      {firstItem.isMuted ? "Microphone Coupé" : "Microphone Actif"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "9px",
+                        fontWeight: 800,
+                        padding: "1px 5px",
+                        borderRadius: "4px",
+                        backgroundColor: firstItem.isMuted ? "rgba(255, 69, 58, 0.2)" : "rgba(48, 209, 88, 0.2)",
+                        border: `1px solid ${firstItem.isMuted ? "rgba(255, 69, 58, 0.35)" : "rgba(48, 209, 88, 0.35)"}`,
+                        color: firstItem.isMuted ? "#FF453A" : "#30D158",
+                      }}
+                    >
+                      {firstItem.isMuted ? "MUET" : "ON AIR"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "10.5px", color: themeProps.subColor, marginTop: "2px", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                    {firstItem.isMuted ? "Votre voix n'est plus diffusée" : "Transmission audio en direct"}
+                  </div>
                 </div>
               </div>
-
-              {/* Middle Info & Level Bar */}
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white tracking-tight">
-                    {firstItem.isMuted ? "Sourdine (Muet)" : "Volume"}
-                  </span>
-                  <span className="text-[11px] font-mono font-bold text-white/90">
-                    {firstItem.isMuted ? "0%" : `${firstItem.volume}%`}
-                  </span>
+            ) : notification.type === "clip" ? (
+              /* 3. Clip Replay Notification */
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    backgroundColor: "rgba(255, 55, 95, 0.18)",
+                    border: "1px solid rgba(255, 55, 95, 0.4)",
+                    color: "#FF375F",
+                    boxShadow: "0 0 12px rgba(255, 55, 95, 0.25)",
+                  }}
+                >
+                  <Film style={{ width: "18px", height: "18px" }} />
                 </div>
-
-                <div className="text-[11px] text-white/65 truncate font-medium">
-                  {firstItem.channelName} - {firstItem.target === "headphone" ? "Personnel 🎧" : "Stream 📡"}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: themeProps.textColor }}>
+                      {notification.title || "Clip 30s enregistré !"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "9px",
+                        fontWeight: 800,
+                        padding: "1px 5px",
+                        borderRadius: "4px",
+                        backgroundColor: "rgba(255, 55, 95, 0.2)",
+                        border: "1px solid rgba(255, 55, 95, 0.35)",
+                        color: "#FF375F",
+                      }}
+                    >
+                      REPLAY
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "10.5px", color: themeProps.subColor, marginTop: "2px", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                    {notification.subtitle || "Audio multi-pistes isolé prêt à l'édition"}
+                  </div>
                 </div>
-
-                <div className="w-full h-1.5 rounded-full bg-white/15 overflow-hidden">
+              </div>
+            ) : (
+              /* 4. Single Track Apple Volume HUD (Standard) */
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {/* Top Row: Track Icon + Title + Value Badge */}
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  {/* Left: Track Icon Box */}
                   <div
-                    className="h-full rounded-full transition-all duration-100"
                     style={{
-                      width: `${firstItem.isMuted ? 0 : firstItem.volume}%`,
-                      backgroundColor: firstItem.isMuted ? "#8E8E93" : firstItem.channelColor,
-                      boxShadow: firstItem.isMuted ? undefined : `0 0 8px ${firstItem.channelColor}`,
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      backgroundColor: `${firstItem.channelColor}22`,
+                      border: `1px solid ${firstItem.channelColor}45`,
+                      color: firstItem.channelColor,
+                      boxShadow: `0 0 10px ${firstItem.channelColor}25`,
+                    }}
+                  >
+                    {React.createElement(getChannelIcon(firstItem.channelId), {
+                      style: { width: "16px", height: "16px" },
+                    })}
+                  </div>
+
+                  {/* Right: Title + Volume on Line 1, Subtitle on Line 2 */}
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "6px" }}>
+                      <span
+                        style={{
+                          fontSize: "12.5px",
+                          fontWeight: 700,
+                          color: themeProps.textColor,
+                          letterSpacing: "-0.01em",
+                          lineHeight: 1.2,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {firstItem.channelName}
+                      </span>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px", flexShrink: 0 }}>
+                        <span
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: "12.5px",
+                            fontWeight: 700,
+                            color: firstItem.isMuted ? themeProps.subColor : themeProps.textColor,
+                            letterSpacing: "-0.02em",
+                            lineHeight: 1,
+                          }}
+                        >
+                          {firstItem.volume}%
+                        </span>
+                        {firstItem.isMuted && (
+                          <span
+                            style={{
+                              fontSize: "9px",
+                              fontWeight: 800,
+                              padding: "1px 5px",
+                              borderRadius: "4px",
+                              backgroundColor: "rgba(255, 69, 58, 0.2)",
+                              border: "1px solid rgba(255, 69, 58, 0.4)",
+                              color: "#FF453A",
+                              letterSpacing: "0.02em",
+                              lineHeight: 1,
+                            }}
+                          >
+                            MUET
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: "10.5px",
+                        color: themeProps.subColor,
+                        fontWeight: 500,
+                        lineHeight: 1.2,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {firstItem.target === "headphone" ? "Personnel (Casque)" : "Stream (OBS)"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Row: LED Glow Progress Bar */}
+                <div
+                  style={{
+                    width: "100%",
+                    height: "5px",
+                    borderRadius: "999px",
+                    backgroundColor: themeProps.trackBg,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${firstItem.volume}%`,
+                      backgroundColor: firstItem.isMuted ? "#636366" : firstItem.channelColor,
+                      boxShadow: firstItem.isMuted ? undefined : `0 0 6px ${firstItem.channelColor}`,
+                      borderRadius: "999px",
+                      transition: "width 0.12s cubic-bezier(0.2, 0.8, 0.2, 1)",
                     }}
                   />
                 </div>
               </div>
-
-              {/* Right Action Badge */}
-              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white/80 shrink-0">
-                {firstItem.isMuted ? (
-                  <VolumeX className="w-3.5 h-3.5 text-red-400" />
-                ) : firstItem.actionType === "down" ? (
-                  <Volume1 className="w-3.5 h-3.5" />
-                ) : (
-                  <Volume2 className="w-3.5 h-3.5 text-[#30D158]" />
-                )}
-              </div>
-            </div>
-          )}
-        </motion.div>
+            )}
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

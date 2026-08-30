@@ -1,8 +1,7 @@
-﻿import { globalShortcut } from "electron";
+import { globalShortcut } from "electron";
 import { startPicker } from "./windows/pickerWindows.js";
 import { getMainWindow } from "./windows/mainWindow.js";
-import { showOverlayNotification } from "./windows/overlayWindow.js";
-import { IpcChannels, type MixerGlobalShortcutBinding, type OverlayNotificationItem } from "../shared/types.js";
+import { IpcChannels, type MixerGlobalShortcutBinding } from "../shared/types.js";
 
 let currentPickerAccelerator: string | null = null;
 let registeredMixerAccelerators: string[] = [];
@@ -60,36 +59,14 @@ export function registerMixerShortcuts(bindings: MixerGlobalShortcutBinding[]): 
     try {
       const ok = globalShortcut.register(accelerator, () => {
         const mainWindow = getMainWindow();
-        const overlayItems: OverlayNotificationItem[] = [];
-
-        for (const item of boundList) {
-          // Notify main window to adjust state
-          if (mainWindow && !mainWindow.isDestroyed()) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          for (const item of boundList) {
             mainWindow.webContents.send(IpcChannels.MixerOnShortcutAction, {
               channelId: item.channelId,
               target: item.target,
               action: item.action,
             });
           }
-
-          overlayItems.push({
-            id: `${item.channelId}-${item.target}`,
-            channelId: item.channelId,
-            channelName: item.channelName,
-            channelColor: item.channelColor,
-            target: item.target,
-            volume: 80, // will be rendered dynamically by store or items
-            isMuted: item.action === "mute",
-            actionType: item.action === "volUp" ? "up" : item.action === "volDown" ? "down" : "mute",
-          });
-        }
-
-        // Show floating screen overlay on top-right of Windows
-        if (overlayItems.length > 0) {
-          showOverlayNotification({
-            type: "volume",
-            items: overlayItems,
-          });
         }
       });
 

@@ -1,7 +1,13 @@
 import { BrowserWindow, screen } from "electron";
 import { isDev, VITE_DEV_SERVER_URL } from "../constants.js";
 import { preloadScriptPath, distPath } from "../paths.js";
-import { IpcChannels, type OverlayNotificationPayload } from "../../shared/types.js";
+import { store } from "../store.js";
+import {
+  DEFAULT_SETTINGS,
+  IpcChannels,
+  type AppSettings,
+  type OverlayNotificationPayload,
+} from "../../shared/types.js";
 
 let overlayWindow: BrowserWindow | null = null;
 let lastPayload: OverlayNotificationPayload | null = null;
@@ -18,10 +24,10 @@ export function createOverlayWindow(): BrowserWindow {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, x: screenX, y: screenY } = primaryDisplay.workArea;
 
-  const winWidth = 380;
-  const winHeight = 320;
-  const posX = Math.round(screenX + screenWidth - winWidth - 24);
-  const posY = Math.round(screenY + 24);
+  const winWidth = 360;
+  const winHeight = 120;
+  const posX = Math.round(screenX + screenWidth - winWidth - 16);
+  const posY = Math.round(screenY + 16);
 
   overlayWindow = new BrowserWindow({
     width: winWidth,
@@ -46,7 +52,10 @@ export function createOverlayWindow(): BrowserWindow {
   });
 
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
+  overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  overlayWindow.setMenuBarVisibility(false);
   overlayWindow.setIgnoreMouseEvents(true);
+  overlayWindow.setHasShadow(false);
 
   if (isDev && VITE_DEV_SERVER_URL) {
     void overlayWindow.loadURL(`${VITE_DEV_SERVER_URL}/overlay.html`);
@@ -62,7 +71,25 @@ export function createOverlayWindow(): BrowserWindow {
 }
 
 export function showOverlayNotification(payload: OverlayNotificationPayload): void {
-  lastPayload = payload;
+  // Merge current settings from store to ensure defaults if not yet persisted
+  const rawSettings = store.get("settings") as Partial<AppSettings> | undefined;
+  const activeSettings = {
+    ...DEFAULT_SETTINGS.overlay,
+    ...(rawSettings?.overlay || {}),
+    ...(payload.settings || {}),
+  };
+
+  // Respect user preferences
+  if (activeSettings.enabled === false) return;
+  if (payload.type === "clip" && activeSettings.showReplayAlerts === false) return;
+  if (payload.type === "mic" && activeSettings.showMicAlerts === false) return;
+
+  const finalPayload: OverlayNotificationPayload = {
+    ...payload,
+    settings: activeSettings,
+  };
+
+  lastPayload = finalPayload;
   let win = getOverlayWindow();
   if (!win) {
     win = createOverlayWindow();
@@ -75,19 +102,20 @@ export function showOverlayNotification(payload: OverlayNotificationPayload): vo
 
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, x: screenX, y: screenY } = primaryDisplay.workArea;
+  const isMulti = Boolean(finalPayload.items && finalPayload.items.length > 1);
   const winWidth = 360;
-  const winHeight = 260;
+  const winHeight = isMulti ? 240 : 120;
   const posX = Math.round(screenX + screenWidth - winWidth - 16);
   const posY = Math.round(screenY + 16);
 
   win.setBounds({ x: posX, y: posY, width: winWidth, height: winHeight });
   win.setAlwaysOnTop(true, "screen-saver");
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.setIgnoreMouseEvents(true);
-  win.moveTop();
 
   const sendData = () => {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.webContents.send(IpcChannels.OverlayOnData, payload);
+      overlayWindow.webContents.send(IpcChannels.OverlayOnData, finalPayload);
     }
   };
 
@@ -100,12 +128,15 @@ export function showOverlayNotification(payload: OverlayNotificationPayload): vo
   if (!win.isVisible()) {
     win.showInactive();
   }
+  win.moveTop();
 
+  // Auto-hide window after duration + buffer for exit animation
+  const durationMs = Math.max(1000, Math.round(activeSettings.durationSeconds * 1000));
   hideTimer = setTimeout(() => {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       overlayWindow.hide();
     }
-  }, 3000);
+  }, durationMs + 350);
 }
 
 export function getOverlayInitPayload(): OverlayNotificationPayload | null {

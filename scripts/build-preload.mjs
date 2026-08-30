@@ -9,6 +9,6 @@ await build({
   bundle: true,
   platform: "node",
   format: "cjs",
-  outfile: join(root, "dist-electron/electron/preload.js"),
+  outfile: join(root, "dist-electron/electron/preload.cjs"),
   external: ["electron"],
 });

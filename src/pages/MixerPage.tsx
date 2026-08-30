@@ -4,7 +4,6 @@ import { useMixerStore } from "@/state/mixerStore";
 import { MixerConsole } from "@/components/mixer/MixerConsole";
 import { ChannelInspector } from "@/components/mixer/ChannelInspector";
 import { MixerChannelSettingsModal } from "@/components/mixer/MixerChannelSettingsModal";
-import { useMixerShortcuts } from "@/hooks/useMixerShortcuts";
 import { Power, Tv } from "lucide-react";
 import type { MixerChannelId } from "@/types/mixer";
 import { useI18n } from "@/hooks/useI18n";
@@ -19,9 +18,6 @@ export const MixerPage: React.FC = () => {
   const updatePeaks = useMixerStore((s) => s.updatePeaks);
   
   const [selectedChannelId, setSelectedChannelId] = useState<MixerChannelId>("master");
-
-  // Activate global keyboard shortcuts listener
-  useMixerShortcuts();
 
   // Periodically detect and sync active Windows audio sessions
   useEffect(() => {

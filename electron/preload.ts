@@ -125,6 +125,7 @@ const colorflowApi: ColorFlowApi = {
 
   overlay: {
     show: (payload: any) => ipcRenderer.send(IpcChannels.OverlayShow, payload),
+    showHud: (hud: any): Promise<boolean> => ipcRenderer.invoke(IpcChannels.MixerShowHud, hud),
     onData: (cb: (payload: any) => void) => on<any>(IpcChannels.OverlayOnData, cb),
     requestInit: (): Promise<any> => ipcRenderer.invoke(IpcChannels.OverlayRequestInit),
   },
@@ -142,8 +143,11 @@ const colorflowApi: ColorFlowApi = {
       ipcRenderer.invoke(IpcChannels.MixerSetMasterVolume, volume),
     setMasterMute: (isMuted: boolean): Promise<boolean> =>
       ipcRenderer.invoke(IpcChannels.MixerSetMasterMute, isMuted),
-    registerShortcuts: (bindings: any): Promise<boolean> =>
-      ipcRenderer.invoke(IpcChannels.MixerRegisterShortcuts, bindings),
+    resetVolumes: (): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.MixerResetVolumes),
+    showHud: (hud: any): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.MixerShowHud, hud),
+    unregisterShortcuts: () => ipcRenderer.invoke(IpcChannels.MixerUnregisterShortcuts),
     onShortcutAction: (cb: (payload: any) => void) =>
       on<any>(IpcChannels.MixerOnShortcutAction, cb),
   },

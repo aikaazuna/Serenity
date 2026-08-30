@@ -228,7 +228,14 @@ export function registerIpcHandlers(): void {
   // Overlay Global Système
   ipcMain.on(IpcChannels.OverlayShow, (_event, payload) => {
     if (payload) {
-      showOverlayNotification(payload);
+      const settings = store.get("settings") as StoreSchema["settings"] | undefined;
+      showOverlayNotification({
+        ...payload,
+        settings: {
+          ...settings?.overlay,
+          ...(payload.settings || {}),
+        },
+      });
     }
   });
 
@@ -367,11 +374,19 @@ export function registerIpcHandlers(): void {
     }
   });
 
-  // New IPC channel to show a single HUD item via MixerShowHud
-  ipcMain.handle(IpcChannels.MixerShowHud, async (_event, hud) => {
+  ipcMain.handle(IpcChannels.MixerResetVolumes, async () => {
     try {
-      // hud is an OverlayNotificationItem
-      showOverlayNotification({ type: "volume", items: [hud] });
+      const res = await sendMixerCommand({ action: "reset-volumes" });
+      return Boolean(res);
+    } catch {
+      return false;
+    }
+  });
+
+  // Unregister all global shortcuts for mixer (used when mixer is disabled)
+  ipcMain.handle(IpcChannels.MixerUnregisterShortcuts, async () => {
+    try {
+      unregisterAllShortcuts();
       return true;
     } catch {
       return false;
