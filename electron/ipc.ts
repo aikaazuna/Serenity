@@ -8,7 +8,7 @@ const execAsync = util.promisify(exec);
 import { IpcChannels, type StoreKey, type StoreSchema, type WindowStatePayload } from "../shared/types.js";
 import { store } from "./store.js";
 import { cancelPicker, confirmPicker, getPickerInitForWebContents, startPicker } from "./windows/pickerWindows.js";
-import { registerPickerShortcut, registerMixerShortcuts } from "./shortcuts.js";
+import { registerPickerShortcut, registerMixerShortcuts, unregisterAllShortcuts } from "./shortcuts.js";
 import { setAutostart, getAutostart } from "./autostart.js";
 import { getMainWindow } from "./windows/mainWindow.js";
 import {
