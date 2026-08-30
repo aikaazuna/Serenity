@@ -1,5 +1,5 @@
 /**
- * Contrat de l'API exposée par le preload sur `window.colorflow`.
+ * Contrat de l'API exposée par le preload sur `window.serenity`.
  * Défini séparément du preload lui-même afin que le renderer (projet TS distinct)
  * puisse le typer sans jamais importer de code Node/Electron.
  */
@@ -23,7 +23,7 @@ import type {
 
 export type Unsubscribe = () => void;
 
-export interface ColorFlowApi {
+export interface SerenityApi {
   window: {
     minimize: () => void;
     toggleMaximize: () => void;

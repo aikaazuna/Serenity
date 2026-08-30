@@ -1,4 +1,4 @@
-import { clsx, type ClassValue } from "clsx";
+﻿import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]): string {
@@ -25,5 +25,5 @@ export function formatRelativeDate(timestamp: number): string {
 }
 
 export function isElectron(): boolean {
-  return typeof window !== "undefined" && "colorflow" in window;
+  return typeof window !== "undefined" && "serenity" in window;
 }

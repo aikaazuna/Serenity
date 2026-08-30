@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { useMixerStore } from "@/state/mixerStore";
 import type { MixerChannelId } from "@/types/mixer";
 import type { MixerGlobalShortcutBinding, OverlayNotificationItem } from "@shared/types";
@@ -39,21 +39,21 @@ export function useMixerShortcuts() {
       }
     }
 
-    if ((window as any).colorflow?.mixer?.registerShortcuts) {
-      void (window as any).colorflow.mixer.registerShortcuts(bindings);
+    if ((window as any).serenity?.mixer?.registerShortcuts) {
+      void (window as any).serenity.mixer.registerShortcuts(bindings);
     }
     // Cleanup: unregister shortcuts when mixer disabled or component unmounts
     return () => {
-      if ((window as any).colorflow?.mixer?.unregisterShortcuts) {
-        void (window as any).colorflow.mixer.unregisterShortcuts();
+      if ((window as any).serenity?.mixer?.unregisterShortcuts) {
+        void (window as any).serenity.mixer.unregisterShortcuts();
       }
     };
   }, [channels, mixerEnabled]);
 
   // 2. Listen to global shortcuts fired from background by Electron
   useEffect(() => {
-    if ((window as any).colorflow?.mixer?.onShortcutAction) {
-      const unsub = (window as any).colorflow.mixer.onShortcutAction((payload: { channelId: MixerChannelId; target: "headphone" | "stream"; action: "volUp" | "volDown" | "mute" }) => {
+    if ((window as any).serenity?.mixer?.onShortcutAction) {
+      const unsub = (window as any).serenity.mixer.onShortcutAction((payload: { channelId: MixerChannelId; target: "headphone" | "stream"; action: "volUp" | "volDown" | "mute" }) => {
         if (payload.action === "volUp") {
           adjustVolumeStep(payload.channelId, payload.target, 5);
         } else if (payload.action === "volDown") {
@@ -178,8 +178,8 @@ export function useMixerShortcuts() {
         }
 
         // Trigger system-wide composite Electron overlay window if multiple channels matched
-        if (matchedItems.length > 1 && (window as any).colorflow?.overlay?.show) {
-          (window as any).colorflow.overlay.show({
+        if (matchedItems.length > 1 && (window as any).serenity?.overlay?.show) {
+          (window as any).serenity.overlay.show({
             type: "volume",
             items: matchedItems,
           });

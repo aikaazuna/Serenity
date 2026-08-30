@@ -7,7 +7,7 @@ import { DEFAULT_SETTINGS, type StoreSchema } from "../shared/types.js";
  * le renderer n'a jamais d'accès direct au système de fichiers.
  */
 export const store = new Store<StoreSchema>({
-  name: "colorflow-data",
+  name: "serenity-data",
   defaults: {
     settings: DEFAULT_SETTINGS,
     history: [],

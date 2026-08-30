@@ -1,4 +1,4 @@
-import type { StoreKey, StoreSchema } from "@shared/types";
+﻿import type { StoreKey, StoreSchema } from "@shared/types";
 import { DEFAULT_SETTINGS } from "@shared/types";
 import { isElectron } from "./utils";
 
@@ -10,7 +10,7 @@ const FALLBACK_DEFAULTS: StoreSchema = {
   update: {},
 };
 
-const LOCAL_KEY_PREFIX = "colorflow:";
+const LOCAL_KEY_PREFIX = "serenity:";
 
 /**
  * Petite couche d'abstraction au-dessus du stockage : utilise l'IPC Electron sécurisé en
@@ -18,7 +18,7 @@ const LOCAL_KEY_PREFIX = "colorflow:";
  * (ex. `vite dev` seul dans un navigateur, pour itérer plus vite sur le design).
  */
 export async function getStoreValue<K extends StoreKey>(key: K): Promise<StoreSchema[K]> {
-  if (isElectron()) return window.colorflow.store.get(key);
+  if (isElectron()) return window.serenity.store.get(key);
 
   const raw = localStorage.getItem(LOCAL_KEY_PREFIX + key);
   if (!raw) return FALLBACK_DEFAULTS[key];
@@ -34,7 +34,7 @@ export async function setStoreValue<K extends StoreKey>(
   value: StoreSchema[K],
 ): Promise<void> {
   if (isElectron()) {
-    await window.colorflow.store.set(key, value);
+    await window.serenity.store.set(key, value);
     return;
   }
   localStorage.setItem(LOCAL_KEY_PREFIX + key, JSON.stringify(value));

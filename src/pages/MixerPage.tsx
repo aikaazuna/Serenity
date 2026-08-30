@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useMixerStore } from "@/state/mixerStore";
 import { MixerConsole } from "@/components/mixer/MixerConsole";
@@ -33,10 +33,10 @@ export const MixerPage: React.FC = () => {
     let active = true;
     let isFetching = false;
     const pollPeaks = async () => {
-      if (!active || isFetching || !(window as any).colorflow?.mixer?.getPeaks) return;
+      if (!active || isFetching || !(window as any).serenity?.mixer?.getPeaks) return;
       isFetching = true;
       try {
-        const peaks = await (window as any).colorflow.mixer.getPeaks();
+        const peaks = await (window as any).serenity.mixer.getPeaks();
         if (active && peaks) {
           updatePeaks(peaks);
         }

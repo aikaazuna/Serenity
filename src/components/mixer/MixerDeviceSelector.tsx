@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useMixerStore } from "@/state/mixerStore";
 import { Headphones, Radio, ChevronDown, Check } from "lucide-react";
 import { isElectron } from "@/lib/utils";
@@ -21,8 +21,8 @@ export const MixerDeviceSelector: React.FC = () => {
   const [streamMenuOpen, setStreamMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (isElectron() && (window as any).colorflow?.audio?.getAudioDevices) {
-      void (window as any).colorflow.audio.getAudioDevices().then((res: any) => {
+    if (isElectron() && (window as any).serenity?.audio?.getAudioDevices) {
+      void (window as any).serenity.audio.getAudioDevices().then((res: any) => {
         if (Array.isArray(res) && res.length > 0) {
           const names = res
             .map((d: any) => (typeof d === "string" ? d : d.name))

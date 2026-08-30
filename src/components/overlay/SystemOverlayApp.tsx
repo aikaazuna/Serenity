@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { OverlayNotificationPayload } from "@shared/types";
 import {
@@ -47,8 +47,8 @@ export const SystemOverlayApp: React.FC = () => {
 
   useEffect(() => {
     // 1. Initial data check if window opened with payload
-    if ((window as any).colorflow?.overlay?.requestInit) {
-      (window as any).colorflow.overlay
+    if ((window as any).serenity?.overlay?.requestInit) {
+      (window as any).serenity.overlay
         .requestInit()
         .then((initData: OverlayNotificationPayload | null) => {
           if (initData) handleNewPayload(initData);
@@ -57,8 +57,8 @@ export const SystemOverlayApp: React.FC = () => {
     }
 
     // 2. Listen to live IPC overlay data from Electron
-    if ((window as any).colorflow?.overlay?.onData) {
-      const unsub = (window as any).colorflow.overlay.onData((payload: OverlayNotificationPayload) => {
+    if ((window as any).serenity?.overlay?.onData) {
+      const unsub = (window as any).serenity.overlay.onData((payload: OverlayNotificationPayload) => {
         handleNewPayload(payload);
       });
       return () => {

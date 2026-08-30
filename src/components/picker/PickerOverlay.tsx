@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import type { DisplayCaptureSource } from "@shared/types";
 import { Magnifier } from "./Magnifier";
 
@@ -23,7 +23,7 @@ export function PickerOverlay() {
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    void window.colorflow.picker
+    void window.serenity.picker
       .requestInit()
       .then((payload) => {
         if (!payload) return;
@@ -82,11 +82,11 @@ export function PickerOverlay() {
       const picked = sampleAt(e.clientX, e.clientY);
       if (!picked) return;
       setIsConfirming(true);
-      setTimeout(() => window.colorflow.picker.confirm(picked.hex), 120);
+      setTimeout(() => window.serenity.picker.confirm(picked.hex), 120);
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") window.colorflow.picker.cancel();
+      if (e.key === "Escape") window.serenity.picker.cancel();
     };
 
     window.addEventListener("mousemove", handleMove);

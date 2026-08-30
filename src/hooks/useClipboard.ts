@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+﻿import { useCallback, useState } from "react";
 import { useAppStore } from "@/state/appStore";
 import { useI18n } from "@/hooks/useI18n";
 import { isElectron } from "@/lib/utils";
@@ -16,7 +16,7 @@ export function useClipboard() {
     async (text: string, key: string, label?: string) => {
       try {
         if (isElectron()) {
-          window.colorflow.clipboard.writeText(text);
+          window.serenity.clipboard.writeText(text);
         } else {
           await navigator.clipboard.writeText(text);
         }

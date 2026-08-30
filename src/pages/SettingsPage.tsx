@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Switch } from "@/components/ui/Switch";
 import { Select } from "@/components/ui/Select";
@@ -39,14 +39,14 @@ export function SettingsPage() {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   useEffect(() => {
-    if (isElectron()) void window.colorflow.app.getVersion().then(setVersion);
+    if (isElectron()) void window.serenity.app.getVersion().then(setVersion);
   }, []);
 
   const handleCheckUpdates = async () => {
     if (!isElectron()) return;
     setCheckingUpdate(true);
     try {
-      const result = await window.colorflow.updater.check();
+      const result = await window.serenity.updater.check();
       if (result.status === "upToDate") {
         notify(t.updater.upToDate, "success");
       } else if (result.status === "available") {
@@ -320,8 +320,8 @@ export function SettingsPage() {
                   variant="secondary"
                   size="sm"
                   onClick={() => {
-                    if (typeof window !== "undefined" && (window as any).colorflow?.overlay?.show) {
-                      (window as any).colorflow.overlay.show({
+                    if (typeof window !== "undefined" && (window as any).serenity?.overlay?.show) {
+                      (window as any).serenity.overlay.show({
                         type: "volume",
                         items: [
                           {
@@ -347,8 +347,8 @@ export function SettingsPage() {
                   variant="secondary"
                   size="sm"
                   onClick={() => {
-                    if (typeof window !== "undefined" && (window as any).colorflow?.overlay?.show) {
-                      (window as any).colorflow.overlay.show({
+                    if (typeof window !== "undefined" && (window as any).serenity?.overlay?.show) {
+                      (window as any).serenity.overlay.show({
                         type: "clip",
                         title: "Clip 30s enregistré !",
                         subtitle: "Pistes audio isolées (Jeu + Discord + Micro)",
@@ -375,8 +375,8 @@ export function SettingsPage() {
                   variant="secondary"
                   size="sm"
                   onClick={() => {
-                    if (typeof window !== "undefined" && (window as any).colorflow?.overlay?.show) {
-                      (window as any).colorflow.overlay.show({
+                    if (typeof window !== "undefined" && (window as any).serenity?.overlay?.show) {
+                      (window as any).serenity.overlay.show({
                         type: "mic",
                         items: [
                           {

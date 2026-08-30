@@ -374,6 +374,24 @@ export function registerIpcHandlers(): void {
     }
   });
 
+  // HUD Overlay : appelé par le renderer via serenity.mixer.showHud()
+  ipcMain.handle(IpcChannels.MixerShowHud, (_event, hudItem) => {
+    try {
+      if (!hudItem) return false;
+      const settings = store.get("settings") as StoreSchema["settings"] | undefined;
+      showOverlayNotification({
+        type: "volume",
+        items: [hudItem],
+        settings: {
+          ...settings?.overlay,
+        },
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
   ipcMain.handle(IpcChannels.MixerResetVolumes, async () => {
     try {
       const res = await sendMixerCommand({ action: "reset-volumes" });

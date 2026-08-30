@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import type { UpdateInfo, UpdateProgress } from "@shared/types";
 import { isElectron } from "@/lib/utils";
 
@@ -14,14 +14,14 @@ export function useAutoUpdater() {
   useEffect(() => {
     if (!isElectron()) return;
 
-    const offAvailable = window.colorflow.updater.onAvailable((info) => {
+    const offAvailable = window.serenity.updater.onAvailable((info) => {
       setUpdateInfo(info);
       setState("available");
       setOpen(true);
       setErrorMessage(null);
     });
 
-    const offProgress = window.colorflow.updater.onProgress((p) => {
+    const offProgress = window.serenity.updater.onProgress((p) => {
       setProgress(p);
       // N'ouvrir le dialog que pendant un téléchargement actif (après clic « Installer »)
       if (p.phase === "connecting" || p.phase === "downloading") {
@@ -34,12 +34,12 @@ export function useAutoUpdater() {
       }
     });
 
-    const offReady = window.colorflow.updater.onReady(() => {
+    const offReady = window.serenity.updater.onReady(() => {
       setState("ready");
       setOpen(true);
     });
 
-    const offError = window.colorflow.updater.onError(({ message }) => {
+    const offError = window.serenity.updater.onError(({ message }) => {
       setErrorMessage(message);
       setState("error");
       setOpen(true);
@@ -57,12 +57,12 @@ export function useAutoUpdater() {
     if (!isElectron()) return;
     setState("downloading");
     setProgress({ phase: "connecting", percent: 0, message: "connecting" });
-    await window.colorflow.updater.download();
+    await window.serenity.updater.download();
   }, []);
 
   const handleDismiss = useCallback(() => {
     if (updateInfo) {
-      window.colorflow.updater.dismiss(updateInfo.version);
+      window.serenity.updater.dismiss(updateInfo.version);
     }
     setOpen(false);
     setState("closed");
@@ -70,18 +70,18 @@ export function useAutoUpdater() {
 
   const handleRestart = useCallback(async () => {
     if (!isElectron()) return;
-    await window.colorflow.updater.install();
+    await window.serenity.updater.install();
   }, []);
 
   const handleRetry = useCallback(async () => {
     setErrorMessage(null);
     setState("downloading");
-    await window.colorflow.updater.download();
+    await window.serenity.updater.download();
   }, []);
 
   const checkForUpdates = useCallback(async () => {
     if (!isElectron()) return { status: "error" as const, message: "Not in Electron" };
-    return window.colorflow.updater.check();
+    return window.serenity.updater.check();
   }, []);
 
   return {

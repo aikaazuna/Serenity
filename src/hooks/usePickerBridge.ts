@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { useAppStore } from "@/state/appStore";
 import { isElectron } from "@/lib/utils";
 
@@ -15,13 +15,13 @@ export function usePickerBridge(): void {
   useEffect(() => {
     if (!isElectron()) return;
 
-    const offOpen = window.colorflow.picker.onOpen(() => setPickerActive(true));
-    const offCaptured = window.colorflow.picker.onCaptured(({ hex }) => {
+    const offOpen = window.serenity.picker.onOpen(() => setPickerActive(true));
+    const offCaptured = window.serenity.picker.onCaptured(({ hex }) => {
       setPickerActive(false);
       setActiveColor(hex, "picker");
       triggerCaptureFlash(hex);
     });
-    const offCancelled = window.colorflow.picker.onCancelled(() => {
+    const offCancelled = window.serenity.picker.onCancelled(() => {
       setPickerActive(false);
     });
 
@@ -34,5 +34,5 @@ export function usePickerBridge(): void {
 }
 
 export function startPicker(): void {
-  if (isElectron()) void window.colorflow.picker.start();
+  if (isElectron()) void window.serenity.picker.start();
 }

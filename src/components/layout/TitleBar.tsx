@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Search, Pipette, Volume2, VolumeX } from "lucide-react";
 import { motion } from "framer-motion";
 import { isElectron } from "@/lib/utils";
@@ -48,7 +48,7 @@ export function TitleBar() {
           >
             {/* Close */}
             <button
-              onClick={() => window.colorflow.window.close()}
+              onClick={() => window.serenity.window.close()}
               aria-label={t.window.close}
               className="group relative flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#FF5F56] transition-transform hover:scale-110 active:scale-95 shadow-sm cursor-pointer"
             >
@@ -63,7 +63,7 @@ export function TitleBar() {
             {/* Minimize */}
             <button
               onClick={() =>
-                runWindowAction("minimize", () => window.colorflow.window.minimize())
+                runWindowAction("minimize", () => window.serenity.window.minimize())
               }
               aria-label={t.window.minimize}
               className="group relative flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#FFBD2E] transition-transform hover:scale-110 active:scale-95 shadow-sm cursor-pointer"
@@ -79,7 +79,7 @@ export function TitleBar() {
             {/* Maximize / Zoom */}
             <button
               onClick={() =>
-                runWindowAction("maximize", () => window.colorflow.window.toggleMaximize())
+                runWindowAction("maximize", () => window.serenity.window.toggleMaximize())
               }
               aria-label={isMaximized ? t.window.restore : t.window.maximize}
               className="group relative flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#27C93F] transition-transform hover:scale-110 active:scale-95 shadow-sm cursor-pointer"

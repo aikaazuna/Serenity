@@ -31,13 +31,13 @@ export const AudioProfilesPage: React.FC = () => {
     let isMounted = true;
     try {
       // @ts-ignore
-      if (isElectron() && window.colorflow && window.colorflow.audio) {
+      if (isElectron() && window.serenity && window.serenity.audio) {
         // @ts-ignore
-        window.colorflow.audio.checkApoInstalled().then((res: boolean) => {
+        window.serenity.audio.checkApoInstalled().then((res: boolean) => {
           if (isMounted) setApoInstalled(res);
         }).catch(() => {});
         // @ts-ignore
-        window.colorflow.audio.getApoPath().then((p: string) => {
+        window.serenity.audio.getApoPath().then((p: string) => {
           if (isMounted) setApoPath(p);
         }).catch(() => {});
       }

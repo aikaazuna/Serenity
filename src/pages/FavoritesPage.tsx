@@ -60,7 +60,7 @@ export function FavoritesPage() {
       null,
       2,
     );
-    const saved = await saveTextFile(`colorflow-${collection.name}.json`, json, [
+    const saved = await saveTextFile(`serenity-${collection.name}.json`, json, [
       { name: "JSON", extensions: ["json"] },
     ]);
     if (saved) notify("Collection exportée", "success");

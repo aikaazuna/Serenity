@@ -1,4 +1,4 @@
-import { isElectron } from "@/lib/utils";
+﻿import { isElectron } from "@/lib/utils";
 
 interface FileFilter {
   name: string;
@@ -20,7 +20,7 @@ export async function saveTextFile(
   filters: FileFilter[],
 ): Promise<boolean> {
   if (isElectron()) {
-    const result = await window.colorflow.export.saveFile({ defaultName, content, filters });
+    const result = await window.serenity.export.saveFile({ defaultName, content, filters });
     return result.success;
   }
   downloadInBrowser(defaultName, new Blob([content], { type: "text/plain" }));
@@ -29,7 +29,7 @@ export async function saveTextFile(
 
 export async function savePngFile(defaultName: string, dataUrl: string): Promise<boolean> {
   if (isElectron()) {
-    const result = await window.colorflow.export.savePng({ defaultName, dataUrl });
+    const result = await window.serenity.export.savePng({ defaultName, dataUrl });
     return result.success;
   }
   const res = await fetch(dataUrl);

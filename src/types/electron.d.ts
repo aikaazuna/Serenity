@@ -1,8 +1,8 @@
-import type { ColorFlowApi } from "@shared/preloadApi";
+import type { SerenityApi } from "@shared/preloadApi";
 
 declare global {
   interface Window {
-    colorflow: ColorFlowApi;
+    serenity: SerenityApi;
   }
 }
 

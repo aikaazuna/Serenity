@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { isElectron } from "@/lib/utils";
 
 interface WindowState {
@@ -14,8 +14,8 @@ export function useWindowState(): WindowState {
   useEffect(() => {
     if (!isElectron()) return;
 
-    void window.colorflow.window.getState().then(setState);
-    return window.colorflow.window.onStateChanged(setState);
+    void window.serenity.window.getState().then(setState);
+    return window.serenity.window.onStateChanged(setState);
   }, []);
 
   return state;

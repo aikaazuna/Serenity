@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useState, useRef } from "react";
 import { useAudioStore } from "@/state/audioStore";
 import { useAppStore } from "@/state/appStore";
 import { useI18n } from "@/hooks/useI18n";
@@ -52,9 +52,9 @@ export const AudioHeader: React.FC = () => {
     const loadDevices = async () => {
       try {
         // @ts-ignore
-        if (isElectron() && window.colorflow?.audio) {
+        if (isElectron() && window.serenity?.audio) {
           // @ts-ignore
-          const fetchFn = window.colorflow.audio.getAudioDevices || window.colorflow.audio.getDevices;
+          const fetchFn = window.serenity.audio.getAudioDevices || window.serenity.audio.getDevices;
           if (typeof fetchFn === "function") {
             const raw = await fetchFn();
             if (isMounted && Array.isArray(raw) && raw.length > 0) {
@@ -97,9 +97,9 @@ export const AudioHeader: React.FC = () => {
       if (next) {
         // Refresh device list immediately on open
         // @ts-ignore
-        if (isElectron() && window.colorflow?.audio) {
+        if (isElectron() && window.serenity?.audio) {
           // @ts-ignore
-          const fetchFn = window.colorflow.audio.getAudioDevices || window.colorflow.audio.getDevices;
+          const fetchFn = window.serenity.audio.getAudioDevices || window.serenity.audio.getDevices;
           if (typeof fetchFn === "function") {
             void fetchFn().then((raw: any) => {
               if (Array.isArray(raw) && raw.length > 0) {

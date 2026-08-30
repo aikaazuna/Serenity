@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+﻿import { contextBridge, ipcRenderer } from "electron";
 import {
   IpcChannels,
   type PickerCapturedPayload,
@@ -12,7 +12,7 @@ import {
   type UpdateReadyPayload,
   type WindowStatePayload,
 } from "../shared/types.js";
-import type { ColorFlowApi } from "../shared/preloadApi.js";
+import type { SerenityApi } from "../shared/preloadApi.js";
 
 /**
  * Seule porte d'entrée entre le monde Node/Electron et le renderer.
@@ -29,7 +29,7 @@ function on<T>(channel: string, callback: (payload: T) => void): Unsubscribe {
   return () => ipcRenderer.removeListener(channel, listener);
 }
 
-const colorflowApi: ColorFlowApi = {
+const SerenityApi: SerenityApi = {
   window: {
     minimize: () => ipcRenderer.send(IpcChannels.WindowMinimize),
     toggleMaximize: () => ipcRenderer.send(IpcChannels.WindowToggleMaximize),
@@ -153,4 +153,4 @@ const colorflowApi: ColorFlowApi = {
   },
 };
 
-contextBridge.exposeInMainWorld("colorflow", colorflowApi);
+contextBridge.exposeInMainWorld("serenity", SerenityApi);

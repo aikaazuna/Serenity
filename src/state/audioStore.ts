@@ -62,16 +62,16 @@ const getDefaultGraphicFilters = (bands: number): Record<number, number> => {
 const applyToAPO = (state: AudioState) => {
   try {
     // @ts-ignore
-    if (window.colorflow && window.colorflow.audio && window.colorflow.audio.writeConfig) {
+    if (window.serenity && window.serenity.audio && window.serenity.audio.writeConfig) {
       if (!state.eqEnabled) {
         // If disabled, apply an empty config or bypass
         // @ts-ignore
-        window.colorflow.audio.writeConfig("# Serenity EQ Bypassed");
+        window.serenity.audio.writeConfig("# Serenity EQ Bypassed");
         return;
       }
       const configString = EQEngine.generateConfig(state);
       // @ts-ignore
-      window.colorflow.audio.writeConfig(configString);
+      window.serenity.audio.writeConfig(configString);
     }
   } catch (e) {
     console.error('Failed to sync with APO backend', e);

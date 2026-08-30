@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
   MixerChannel,
@@ -233,12 +233,12 @@ function emitOverlayHud(hud: VolumeHudNotification | null) {
     actionType: hud.actionType,
   };
 
-  if ((window as any).colorflow?.mixer?.showHud) {
-    void (window as any).colorflow.mixer.showHud(overlayItem);
-  } else if ((window as any).colorflow?.overlay?.showHud) {
-    void (window as any).colorflow.overlay.showHud(overlayItem);
-  } else if ((window as any).colorflow?.overlay?.show) {
-    (window as any).colorflow.overlay.show({
+  if ((window as any).serenity?.mixer?.showHud) {
+    void (window as any).serenity.mixer.showHud(overlayItem);
+  } else if ((window as any).serenity?.overlay?.showHud) {
+    void (window as any).serenity.overlay.showHud(overlayItem);
+  } else if ((window as any).serenity?.overlay?.show) {
+    (window as any).serenity.overlay.show({
       type: "volume",
       items: [overlayItem],
     });
@@ -260,8 +260,8 @@ function throttledSetProcessVolume(proc: string, vol: number) {
   const timer = setTimeout(() => {
     volumeThrottleTimers.delete(key);
     lastSentVolumes.set(key, vol);
-    if (typeof window !== "undefined" && (window as any).colorflow?.mixer?.setProcessVolume) {
-      void (window as any).colorflow.mixer.setProcessVolume(proc, vol);
+    if (typeof window !== "undefined" && (window as any).serenity?.mixer?.setProcessVolume) {
+      void (window as any).serenity.mixer.setProcessVolume(proc, vol);
     }
   }, 20);
   volumeThrottleTimers.set(key, timer);
@@ -278,27 +278,27 @@ function throttledSetMasterVolume(vol: number) {
   const timer = setTimeout(() => {
     volumeThrottleTimers.delete(key);
     lastSentVolumes.set(key, vol);
-    if (typeof window !== "undefined" && (window as any).colorflow?.mixer?.setMasterVolume) {
-      void (window as any).colorflow.mixer.setMasterVolume(vol);
+    if (typeof window !== "undefined" && (window as any).serenity?.mixer?.setMasterVolume) {
+      void (window as any).serenity.mixer.setMasterVolume(vol);
     }
   }, 20);
   volumeThrottleTimers.set(key, timer);
 }
 
 function applyChannelToWindows(ch: MixerChannel, mixerEnabled: boolean) {
-  if (typeof window === "undefined" || !(window as any).colorflow?.mixer) return;
+  if (typeof window === "undefined" || !(window as any).serenity?.mixer) return;
   if (!mixerEnabled) return;
 
   const vol = ch.headphoneMuted ? 0 : ch.headphoneVolume;
   if (ch.id === "master") {
     throttledSetMasterVolume(vol);
-    void (window as any).colorflow.mixer.setMasterMute(ch.headphoneMuted);
+    void (window as any).serenity.mixer.setMasterMute(ch.headphoneMuted);
   } else {
     for (const app of ch.assignedApps) {
       const proc = (app.executable || app.name || "").trim();
       if (proc && proc !== "System" && proc !== "Système Windows") {
         throttledSetProcessVolume(proc, vol);
-        void (window as any).colorflow.mixer.setProcessMute(proc, ch.headphoneMuted);
+        void (window as any).serenity.mixer.setProcessMute(proc, ch.headphoneMuted);
       }
     }
   }
@@ -375,7 +375,7 @@ export const useMixerStore = create<MixerStore>()(
         }
         // Reset per-process volumes to 100% on Windows when disabling the mixer
         if (!enabled && process.platform === 'win32') {
-          void (window as any).colorflow.mixer.resetVolumes();
+          void (window as any).serenity.mixer.resetVolumes();
         }
       },
 
@@ -388,7 +388,7 @@ export const useMixerStore = create<MixerStore>()(
         }
         // When disabling the mixer, reset all process volumes to 100% on Windows
         if (!next && process.platform === 'win32') {
-          void (window as any).colorflow.mixer.resetVolumes();
+          void (window as any).serenity.mixer.resetVolumes();
         }
       },
 
@@ -746,9 +746,9 @@ export const useMixerStore = create<MixerStore>()(
       },
 
       syncWindowsAudioSessions: async () => {
-        if (typeof window === "undefined" || !(window as any).colorflow?.mixer?.getSessions) return;
+        if (typeof window === "undefined" || !(window as any).serenity?.mixer?.getSessions) return;
         try {
-          const sessions = await (window as any).colorflow.mixer.getSessions();
+          const sessions = await (window as any).serenity.mixer.getSessions();
           if (!sessions || !Array.isArray(sessions)) return;
 
           const state = get();
@@ -824,8 +824,8 @@ export const useMixerStore = create<MixerStore>()(
       },
 
       resetMixer: () => {
-        if (typeof window !== "undefined" && (window as any).colorflow?.mixer?.resetVolumes) {
-          void (window as any).colorflow.mixer.resetVolumes();
+        if (typeof window !== "undefined" && (window as any).serenity?.mixer?.resetVolumes) {
+          void (window as any).serenity.mixer.resetVolumes();
         }
         set({
           mixerEnabled: true,
