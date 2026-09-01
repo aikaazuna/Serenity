@@ -116,6 +116,44 @@ export interface OverlaySettings {
   showChannelIcons: boolean;
 }
 
+export interface ClipsSettings {
+  enabled: boolean;
+  replayShortcut: string;
+  screenshotShortcut: string;
+  recordShortcut: string;
+  replayDurationSeconds: number;
+  clipsFolder: string;
+  fps: number;
+  quality: "1080p" | "720p" | "source";
+  includeMic: boolean;
+  includeSystemAudio: boolean;
+}
+
+export const DEFAULT_CLIPS_SETTINGS: ClipsSettings = {
+  enabled: true,
+  replayShortcut: "Alt+F10",
+  screenshotShortcut: "Alt+F1",
+  recordShortcut: "Alt+F9",
+  replayDurationSeconds: 30,
+  clipsFolder: "",
+  fps: 60,
+  quality: "1080p",
+  includeMic: true,
+  includeSystemAudio: true,
+};
+
+export interface ClipItem {
+  id: string;
+  filename: string;
+  path: string;
+  type: "video" | "screenshot";
+  durationSeconds?: number;
+  sizeBytes: number;
+  createdAt: number;
+  thumbnailDataUrl?: string;
+  resolution?: string;
+}
+
 export interface AppSettings {
   pickerShortcut: string;
   launchAtStartup: boolean;
@@ -126,6 +164,7 @@ export interface AppSettings {
   closeToTray: boolean;
   magnifierZoom: number;
   overlay: OverlaySettings;
+  clips: ClipsSettings;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -145,6 +184,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     showMicAlerts: true,
     showChannelIcons: true,
   },
+  clips: DEFAULT_CLIPS_SETTINGS,
 };
 
 export interface PickerCapturedPayload {
@@ -279,6 +319,7 @@ export const IpcChannels = {
   AudioReadConfig: "audio:read-config",
   AudioWriteConfig: "audio:write-config",
   AudioGetDevices: "audio:get-devices",
+  AudioOpenDeviceSelector: "audio:open-device-selector",
   AudioCheckApoInstalled: "audio:check-apo",
   AudioGetApoPath: "audio:get-apo-path",
 
@@ -301,6 +342,20 @@ export const IpcChannels = {
   MixerResetVolumes: "mixer:reset-volumes",
   MixerUnregisterShortcuts: "mixer:unregister-shortcuts",
   MixerShowHud: "mixer:show-hud",
+  MixerSyncState: "mixer:sync-state",
+  MixerOnStateUpdated: "mixer:on-state-updated",
+
+  // Clips & Screenshots
+  ClipsGetFiles: "clips:get-files",
+  ClipsGetDesktopSources: "clips:get-desktop-sources",
+  ClipsSaveReplay: "clips:save-replay",
+  ClipsSaveVideoBlob: "clips:save-video-blob",
+  ClipsTakeScreenshot: "clips:take-screenshot",
+  ClipsOpenFolder: "clips:open-folder",
+  ClipsDeleteFile: "clips:delete-file",
+  ClipsRegisterShortcuts: "clips:register-shortcuts",
+  ClipsOnReplayTriggered: "clips:on-replay-triggered",
+  ClipsOnScreenshotTriggered: "clips:on-screenshot-triggered",
 } as const;
 
 export interface WindowsAudioSession {
@@ -308,6 +363,19 @@ export interface WindowsAudioSession {
   processName: string;
   volume: number;
   isMuted: boolean;
+}
+
+/** État de volume d'un canal mixer, synchronisé depuis le renderer vers le main process. */
+export interface MixerChannelVolumeState {
+  channelId: string;
+  channelName: string;
+  channelColor: string;
+  headphoneVolume: number;
+  streamVolume: number;
+  headphoneMuted: boolean;
+  streamMuted: boolean;
+  /** Noms de processus associés à ce canal (pour setProcessVolume) */
+  processNames: string[];
 }
 
 export interface MixerGlobalShortcutBinding {
@@ -336,7 +404,7 @@ export interface OverlayNotificationPayload {
   title?: string;
   subtitle?: string;
   clipDurationSeconds?: number;
-  items: OverlayNotificationItem[];
+  items?: OverlayNotificationItem[];
   settings?: Partial<OverlaySettings>;
 }
 
@@ -348,6 +416,12 @@ export interface StoreSchema {
   favorites: FavoriteColor[];
   collections: FavoriteCollection[];
   update: UpdateStoreState;
+}
+
+export interface AudioDeviceInfo {
+  name: string;
+  isInstalled: boolean;
+  guid?: string;
 }
 
 export type StoreKey = keyof StoreSchema;

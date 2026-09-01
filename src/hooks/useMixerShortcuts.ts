@@ -1,7 +1,7 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { useMixerStore } from "@/state/mixerStore";
 import type { MixerChannelId } from "@/types/mixer";
-import type { MixerGlobalShortcutBinding, OverlayNotificationItem } from "@shared/types";
+import type { MixerGlobalShortcutBinding, MixerChannelVolumeState, OverlayNotificationItem } from "@shared/types";
 
 export function useMixerShortcuts() {
   const channels = useMixerStore((s) => s.channels);
@@ -10,14 +10,27 @@ export function useMixerShortcuts() {
   const toggleMuteWithHud = useMixerStore((s) => s.toggleMuteWithHud);
   const selectedChannelSettings = useMixerStore((s) => s.selectedChannelSettings);
 
-  // 1. Sync global shortcuts with Electron process (runs across all Windows games & apps)
+  // 1. Sync global shortcuts and channel volume state with Electron main process
   useEffect(() => {
     if (!mixerEnabled) return;
+
     const bindings: MixerGlobalShortcutBinding[] = [];
+    const states: MixerChannelVolumeState[] = [];
 
     for (const chId of Object.keys(channels) as MixerChannelId[]) {
       const ch = channels[chId];
       const sc = ch.shortcuts;
+
+      states.push({
+        channelId: chId,
+        channelName: ch.name,
+        channelColor: ch.color,
+        headphoneVolume: ch.headphoneVolume,
+        streamVolume: ch.streamVolume,
+        headphoneMuted: ch.headphoneMuted,
+        streamMuted: ch.streamMuted,
+        processNames: (ch.assignedApps || []).map((a) => a.name),
+      });
 
       if (sc.headphoneVolUp) {
         bindings.push({ channelId: chId, channelName: ch.name, channelColor: ch.color, target: "headphone", action: "volUp", accelerator: sc.headphoneVolUp });
@@ -39,9 +52,13 @@ export function useMixerShortcuts() {
       }
     }
 
+    if ((window as any).serenity?.mixer?.syncState) {
+      void (window as any).serenity.mixer.syncState(states);
+    }
     if ((window as any).serenity?.mixer?.registerShortcuts) {
       void (window as any).serenity.mixer.registerShortcuts(bindings);
     }
+
     // Cleanup: unregister shortcuts when mixer disabled or component unmounts
     return () => {
       if ((window as any).serenity?.mixer?.unregisterShortcuts) {
@@ -50,26 +67,37 @@ export function useMixerShortcuts() {
     };
   }, [channels, mixerEnabled]);
 
-  // 2. Listen to global shortcuts fired from background by Electron
+  // 2. Synchronize Zustand store when shortcuts are pressed while the app is in the background
   useEffect(() => {
-    if ((window as any).serenity?.mixer?.onShortcutAction) {
-      const unsub = (window as any).serenity.mixer.onShortcutAction((payload: { channelId: MixerChannelId; target: "headphone" | "stream"; action: "volUp" | "volDown" | "mute" }) => {
-        if (payload.action === "volUp") {
-          adjustVolumeStep(payload.channelId, payload.target, 5);
-        } else if (payload.action === "volDown") {
-          adjustVolumeStep(payload.channelId, payload.target, -5);
-        } else if (payload.action === "mute") {
-          toggleMuteWithHud(payload.channelId, payload.target);
+    if ((window as any).serenity?.mixer?.onStateUpdated) {
+      const unsub = (window as any).serenity.mixer.onStateUpdated(
+        ({ channelId, state }: { channelId: MixerChannelId; state: MixerChannelVolumeState }) => {
+          useMixerStore.setState((s) => {
+            const existing = s.channels[channelId];
+            if (!existing) return s;
+            return {
+              channels: {
+                ...s.channels,
+                [channelId]: {
+                  ...existing,
+                  headphoneVolume: state.headphoneVolume,
+                  streamVolume: state.streamVolume,
+                  headphoneMuted: state.headphoneMuted,
+                  streamMuted: state.streamMuted,
+                },
+              },
+            };
+          });
         }
-      });
+      );
       return () => unsub();
     }
     return undefined;
-  }, [adjustVolumeStep, toggleMuteWithHud]);
+  }, []);
 
   // 3. Local keydown listener when Serenity window is focused
   useEffect(() => {
-    if (selectedChannelSettings) return;
+    if (!mixerEnabled || selectedChannelSettings) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = (document.activeElement?.tagName || "").toLowerCase();
@@ -189,5 +217,5 @@ export function useMixerShortcuts() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [channels, adjustVolumeStep, toggleMuteWithHud, selectedChannelSettings]);
+  }, [channels, mixerEnabled, adjustVolumeStep, toggleMuteWithHud, selectedChannelSettings]);
 }

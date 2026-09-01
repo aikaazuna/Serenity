@@ -6,6 +6,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { usePickerBridge } from "@/hooks/usePickerBridge";
 import { useAnimationsEnabled } from "@/hooks/useAnimations";
 import { useMixerShortcuts } from "@/hooks/useMixerShortcuts";
+import { useClipsShortcuts } from "@/hooks/useClipsShortcuts";
 import { AppShell } from "@/components/layout/AppShell";
 import { SplashScreen } from "@/components/layout/SplashScreen";
 import { TooltipProvider } from "@/components/ui/Tooltip";
@@ -33,6 +34,7 @@ export default function App() {
   useTheme();
   usePickerBridge();
   useMixerShortcuts();
+  useClipsShortcuts();
 
   return (
     <ErrorBoundary>

@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   AlertCircle,
   Copy,
+  Wrench,
 } from 'lucide-react';
 
 export const AudioProfilesPage: React.FC = () => {
@@ -172,6 +173,20 @@ export const AudioProfilesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => {
+              if (isElectron() && window.serenity?.audio?.openDeviceSelector) {
+                window.serenity.audio.openDeviceSelector().then((ok: boolean) => {
+                  if (!ok) notify("Configurateur Equalizer APO introuvable", "warning");
+                });
+              }
+            }}
+            className="apple-inner-box flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#0A84FF] hover:bg-[#0A84FF]/10 transition cursor-pointer"
+            title="Ouvrir le sélecteur de périphériques d'Equalizer APO"
+          >
+            <Wrench className="w-3.5 h-3.5" />
+            <span>Gérer les périphériques</span>
+          </button>
           <button
             onClick={copyConfigToClipboard}
             className="apple-inner-box flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-secondary hover:text-[color:var(--text-primary)] transition cursor-pointer"

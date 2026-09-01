@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useAudioStore } from "@/state/audioStore";
 import { useAppStore } from "@/state/appStore";
 import { useI18n } from "@/hooks/useI18n";
@@ -11,7 +11,14 @@ import {
   Sliders,
   Power,
   AlertTriangle,
+  Wrench,
+  AlertCircle,
 } from "lucide-react";
+
+interface AudioDeviceItem {
+  name: string;
+  isInstalled: boolean;
+}
 
 export const AudioHeader: React.FC = () => {
   const eqEnabled = useAudioStore((s) => s.eqEnabled);
@@ -28,7 +35,7 @@ export const AudioHeader: React.FC = () => {
   const notify = useAppStore((s) => s.notify);
   const t = useI18n();
 
-  const [deviceList, setDeviceList] = useState<string[]>([]);
+  const [deviceList, setDeviceList] = useState<AudioDeviceItem[]>([]);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const deviceDropdownRef = useRef<HTMLDivElement>(null);
@@ -46,46 +53,47 @@ export const AudioHeader: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const loadDevices = async (isMounted = true) => {
+    try {
+      if (isElectron() && window.serenity?.audio?.getAudioDevices) {
+        const raw = await window.serenity.audio.getAudioDevices();
+        if (isMounted && Array.isArray(raw) && raw.length > 0) {
+          const map = new Map<string, boolean>();
+          for (const item of raw) {
+            const n = typeof item === "string" ? item : item.name;
+            const isInst = typeof item === "string" ? true : Boolean(item.isInstalled);
+            if (n && (!map.has(n) || isInst)) map.set(n, isInst);
+          }
+          const list: AudioDeviceItem[] = [];
+          for (const [name, isInstalled] of map.entries()) {
+            list.push({ name, isInstalled });
+          }
+          setDeviceList(list);
+          return;
+        }
+      }
+
+      // Web fallback via navigator.mediaDevices
+      if (navigator.mediaDevices?.enumerateDevices) {
+        const mediaDevs = await navigator.mediaDevices.enumerateDevices();
+        if (isMounted) {
+          const outputs = mediaDevs
+            .filter((d) => d.kind === "audiooutput" && d.label)
+            .map((d) => d.label);
+          if (outputs.length > 0) {
+            const unique = Array.from(new Set(outputs));
+            setDeviceList(unique.map((name) => ({ name, isInstalled: true })));
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load audio devices", e);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
-
-    const loadDevices = async () => {
-      try {
-        // @ts-ignore
-        if (isElectron() && window.serenity?.audio) {
-          // @ts-ignore
-          const fetchFn = window.serenity.audio.getAudioDevices || window.serenity.audio.getDevices;
-          if (typeof fetchFn === "function") {
-            const raw = await fetchFn();
-            if (isMounted && Array.isArray(raw) && raw.length > 0) {
-              const names = raw.map((d: any) =>
-                typeof d === "string" ? d : d.name || "Périphérique"
-              ).filter(Boolean);
-              setDeviceList(Array.from(new Set(names)));
-              return;
-            }
-          }
-        }
-
-        // Web fallback via navigator.mediaDevices
-        if (navigator.mediaDevices?.enumerateDevices) {
-          const mediaDevs = await navigator.mediaDevices.enumerateDevices();
-          if (isMounted) {
-            const outputs = mediaDevs
-              .filter((d) => d.kind === "audiooutput" && d.label)
-              .map((d) => d.label);
-            if (outputs.length > 0) {
-              setDeviceList(Array.from(new Set(outputs)));
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load audio devices", e);
-      }
-    };
-
-    void loadDevices();
-
+    void loadDevices(isMounted);
     return () => {
       isMounted = false;
     };
@@ -95,25 +103,19 @@ export const AudioHeader: React.FC = () => {
     setDeviceMenuOpen((v) => {
       const next = !v;
       if (next) {
-        // Refresh device list immediately on open
-        // @ts-ignore
-        if (isElectron() && window.serenity?.audio) {
-          // @ts-ignore
-          const fetchFn = window.serenity.audio.getAudioDevices || window.serenity.audio.getDevices;
-          if (typeof fetchFn === "function") {
-            void fetchFn().then((raw: any) => {
-              if (Array.isArray(raw) && raw.length > 0) {
-                const names = raw.map((d: any) =>
-                  typeof d === "string" ? d : d.name || "Périphérique"
-                ).filter(Boolean);
-                setDeviceList(Array.from(new Set(names)));
-              }
-            });
-          }
-        }
+        void loadDevices();
       }
       return next;
     });
+  };
+
+  const handleOpenConfigurator = async () => {
+    if (isElectron() && window.serenity?.audio?.openDeviceSelector) {
+      const ok = await window.serenity.audio.openDeviceSelector();
+      if (!ok) {
+        notify("Configurateur Equalizer APO introuvable", "warning");
+      }
+    }
   };
 
   const handleAutoEQImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,8 +165,41 @@ export const AudioHeader: React.FC = () => {
 
   const isClippingRisk = preamp > 3;
 
+  // Calcul des périphériques sélectionnés non traités par Equalizer APO
+  const selectedDeviceObjects = deviceList.filter((d) => {
+    if (d.name === "all" || d.name === "Toutes les sorties audio") return false;
+    return devices.includes("all") ? true : devices.includes(d.name);
+  });
+  const unconfiguredDevices = selectedDeviceObjects.filter((d) => !d.isInstalled);
+  const hasApoIssues = unconfiguredDevices.length > 0;
+
   return (
     <div className="apple-card relative z-30 p-5 select-none space-y-3.5">
+      {/* Warning Banner if Equalizer APO is not active on selected output(s) */}
+      {hasApoIssues && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 px-3.5 bg-amber-500/12 border border-amber-500/30 rounded-xl text-amber-500 text-xs animate-fade-in">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+            <div className="min-w-0">
+              <span className="font-bold text-[color:var(--text-primary)]">
+                {t.audio.apoWarningTitle} :
+              </span>{" "}
+              <span className="text-[11.5px] text-secondary">
+                {t.audio.apoWarningDesc}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenConfigurator}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-xl font-bold transition shrink-0 cursor-pointer text-amber-400 hover:text-amber-200 text-xs shadow-xs"
+          >
+            <Wrench className="h-3.5 w-3.5" />
+            <span>{t.audio.openApoConfigurator}</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Row: Device, Channel on Left; Actions & Master Power on Right */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Left: Device & Channel Selector */}
@@ -174,52 +209,90 @@ export const AudioHeader: React.FC = () => {
             <button
               type="button"
               onClick={handleToggleMenu}
-              className="apple-inner-box flex h-9 items-center gap-2 px-3 py-1 cursor-pointer hover:border-[color:var(--panel-border-strong)] transition"
+              className={`apple-inner-box flex h-9 items-center gap-2 px-3 py-1 cursor-pointer hover:border-[color:var(--panel-border-strong)] transition ${
+                hasApoIssues ? "border-amber-500/40 ring-1 ring-amber-500/20" : ""
+              }`}
               title={t.audio.deviceSelector}
             >
-              <Speaker className="h-4 w-4 text-[#0A84FF] shrink-0" />
+              <Speaker className={`h-4 w-4 shrink-0 ${hasApoIssues ? "text-amber-500" : "text-[#0A84FF]"}`} />
               <span className="text-xs font-semibold text-[color:var(--text-primary)] max-w-[210px] truncate">
                 {devices.includes("all")
                   ? t.audio.allOutputs
                   : `${devices.length} ${t.audio.selectedOutputs}`}
               </span>
+              {hasApoIssues && (
+                <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" title="Non configuré dans Equalizer APO" />
+              )}
             </button>
 
             {deviceMenuOpen && (
-              <div className="absolute top-full mt-2 left-0 w-72 bg-[color:var(--card-bg)] border border-[color:var(--panel-border-strong)] rounded-2xl shadow-2xl p-2.5 z-[300] backdrop-blur-2xl animate-fade-in space-y-1">
-                <div className="text-[11px] font-bold text-tertiary uppercase tracking-wider px-2 py-1">
-                  {t.audio.deviceSelector}
+              <div className="absolute top-full mt-2 left-0 w-80 bg-[color:var(--card-bg)] border border-[color:var(--panel-border-strong)] rounded-2xl shadow-2xl p-2.5 z-[300] backdrop-blur-2xl animate-fade-in space-y-1.5">
+                <div className="flex items-center justify-between px-2 py-1">
+                  <span className="text-[11px] font-bold text-tertiary uppercase tracking-wider">
+                    {t.audio.deviceSelector}
+                  </span>
+                  <span className="text-[10px] text-tertiary">
+                    Statut Equalizer APO
+                  </span>
                 </div>
                 <div className="max-h-64 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-                  <label className="flex items-center gap-2.5 p-2 hover:bg-[color:var(--panel-bg-strong)] rounded-xl cursor-pointer transition">
-                    <input
-                      type="checkbox"
-                      checked={devices.includes("all")}
-                      onChange={() => toggleDevice("all")}
-                      className="accent-[#0A84FF] h-4 w-4 rounded cursor-pointer"
-                    />
-                    <span className="text-xs font-medium text-[color:var(--text-primary)]">
-                      {t.audio.allOutputs}
-                    </span>
+                  <label className="flex items-center justify-between gap-2.5 p-2 hover:bg-[color:var(--panel-bg-strong)] rounded-xl cursor-pointer transition">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={devices.includes("all")}
+                        onChange={() => toggleDevice("all")}
+                        className="accent-[#0A84FF] h-4 w-4 rounded cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs font-medium text-[color:var(--text-primary)]">
+                        {t.audio.allOutputs}
+                      </span>
+                    </div>
                   </label>
                   {deviceList
-                    .filter((d) => d && d !== "all" && d !== "Toutes les sorties audio" && d !== "All Devices")
+                    .filter((d) => d.name && d.name !== "all" && d.name !== "Toutes les sorties audio" && d.name !== "All Devices")
                     .map((d) => (
                       <label
-                        key={d}
-                        className="flex items-center gap-2.5 p-2 hover:bg-[color:var(--panel-bg-strong)] rounded-xl cursor-pointer transition"
+                        key={d.name}
+                        className="flex items-center justify-between gap-2 p-2 hover:bg-[color:var(--panel-bg-strong)] rounded-xl cursor-pointer transition"
                       >
-                        <input
-                          type="checkbox"
-                          checked={devices.includes(d)}
-                          onChange={() => toggleDevice(d)}
-                          className="accent-[#0A84FF] h-4 w-4 rounded cursor-pointer"
-                        />
-                        <span className="text-xs font-medium text-[color:var(--text-primary)] truncate" title={d}>
-                          {d}
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={devices.includes(d.name)}
+                            onChange={() => toggleDevice(d.name)}
+                            className="accent-[#0A84FF] h-4 w-4 rounded cursor-pointer shrink-0"
+                          />
+                          <span className="text-xs font-medium text-[color:var(--text-primary)] truncate" title={d.name}>
+                            {d.name}
+                          </span>
+                        </div>
+                        <span
+                          className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
+                            d.isInstalled
+                              ? "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30"
+                              : "bg-amber-500/15 text-amber-500 border border-amber-500/30"
+                          }`}
+                        >
+                          {d.isInstalled ? t.audio.apoActive : t.audio.apoNotConfigured}
                         </span>
                       </label>
                     ))}
+                </div>
+
+                {/* Footer Button: Open Equalizer APO Device Selector */}
+                <div className="pt-2 border-t border-[color:var(--panel-border-strong)] mt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeviceMenuOpen(false);
+                      void handleOpenConfigurator();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 p-2 bg-[#0A84FF]/10 hover:bg-[#0A84FF]/20 text-[#0A84FF] border border-[#0A84FF]/25 rounded-xl font-bold text-xs transition cursor-pointer"
+                  >
+                    <Wrench className="h-3.5 w-3.5" />
+                    <span>{t.audio.openApoConfigurator}</span>
+                  </button>
                 </div>
               </div>
             )}

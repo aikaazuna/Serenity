@@ -3,7 +3,7 @@ import { createMainWindow, showMainWindow } from "./windows/mainWindow.js";
 import { createOverlayWindow } from "./windows/overlayWindow.js";
 import { createTray, destroyTray } from "./tray.js";
 import { registerIpcHandlers } from "./ipc.js";
-import { registerPickerShortcut, unregisterAllShortcuts } from "./shortcuts.js";
+import { registerPickerShortcut, registerClipsShortcuts, unregisterAllShortcuts } from "./shortcuts.js";
 import { store } from "./store.js";
 import { setAutostart } from "./autostart.js";
 import { setQuitting } from "./appState.js";
@@ -34,9 +34,10 @@ if (!gotSingleInstanceLock) {
       app.quit();
     });
 
-    const { pickerShortcut, launchAtStartup } = store.get("settings");
-    registerPickerShortcut(pickerShortcut);
-    setAutostart(launchAtStartup);
+    const settings = store.get("settings");
+    registerPickerShortcut(settings?.pickerShortcut || "CommandOrControl+Shift+C");
+    registerClipsShortcuts(settings?.clips);
+    setAutostart(settings?.launchAtStartup ?? false);
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();

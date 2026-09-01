@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Switch } from "@/components/ui/Switch";
 import { Select } from "@/components/ui/Select";
@@ -7,7 +7,7 @@ import { ShortcutRecorder } from "@/components/settings/ShortcutRecorder";
 import { useAppStore } from "@/state/appStore";
 import { useI18n } from "@/hooks/useI18n";
 import { isElectron } from "@/lib/utils";
-import { ShieldCheck, Sparkles, Scale, CheckCircle2, RotateCcw } from "lucide-react";
+import { ShieldCheck, Sparkles, Scale, CheckCircle2, RotateCcw, FolderOpen } from "lucide-react";
 import type { ReactNode } from "react";
 
 function SettingRow({
@@ -399,6 +399,117 @@ export function SettingsPage() {
                   Tester Micro
                 </Button>
               </div>
+            }
+          />
+        </div>
+      </GlassCard>
+
+      {/* Clips & Screenshots Settings */}
+      <GlassCard className="p-5">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h3 className="text-[13px] font-semibold text-[color:var(--text-primary)]">
+              {t.settings.clipsSection}
+            </h3>
+            <p className="text-xs text-secondary mt-0.5">
+              {t.settings.clipsSectionDesc}
+            </p>
+          </div>
+        </div>
+        <div className="divide-y divide-[color:var(--panel-border)]">
+          <SettingRow
+            title={t.settings.clipsReplayShortcut}
+            description={t.settings.clipsReplayShortcutDesc}
+            control={
+              <ShortcutRecorder
+                value={settings.clips?.replayShortcut ?? "Alt+F10"}
+                onChange={(accelerator) => {
+                  void updateSettings({
+                    clips: {
+                      ...(settings.clips || {}),
+                      replayShortcut: accelerator,
+                    } as any,
+                  });
+                  if (isElectron() && window.serenity?.clips?.registerShortcuts) {
+                    void window.serenity.clips.registerShortcuts({
+                      replayShortcut: accelerator,
+                      screenshotShortcut: settings.clips?.screenshotShortcut ?? "Alt+F1",
+                    });
+                  }
+                  notify(t.settings.shortcutUpdated, "success", accelerator);
+                }}
+              />
+            }
+          />
+          <SettingRow
+            title={t.settings.clipsScreenshotShortcut}
+            description={t.settings.clipsScreenshotShortcutDesc}
+            control={
+              <ShortcutRecorder
+                value={settings.clips?.screenshotShortcut ?? "Alt+F1"}
+                onChange={(accelerator) => {
+                  void updateSettings({
+                    clips: {
+                      ...(settings.clips || {}),
+                      screenshotShortcut: accelerator,
+                    } as any,
+                  });
+                  if (isElectron() && window.serenity?.clips?.registerShortcuts) {
+                    void window.serenity.clips.registerShortcuts({
+                      replayShortcut: settings.clips?.replayShortcut ?? "Alt+F10",
+                      screenshotShortcut: accelerator,
+                    });
+                  }
+                  notify(t.settings.shortcutUpdated, "success", accelerator);
+                }}
+              />
+            }
+          />
+          <SettingRow
+            title={t.settings.clipsDuration}
+            description={t.settings.clipsDurationDesc}
+            control={
+              <div className="flex items-center gap-2">
+                {[15, 30, 60, 120].map((sec) => (
+                  <button
+                    key={sec}
+                    type="button"
+                    onClick={() =>
+                      void updateSettings({
+                        clips: {
+                          ...(settings.clips || {}),
+                          replayDurationSeconds: sec,
+                        } as any,
+                      })
+                    }
+                    className={`px-3 py-1 text-xs font-semibold rounded-xl border transition cursor-pointer ${
+                      (settings.clips?.replayDurationSeconds ?? 30) === sec
+                        ? "bg-[#BF5AF2] text-white border-[#BF5AF2] shadow-xs"
+                        : "apple-inner-box text-secondary hover:text-[color:var(--text-primary)]"
+                    }`}
+                  >
+                    {sec}s
+                  </button>
+                ))}
+              </div>
+            }
+          />
+          <SettingRow
+            title={t.settings.clipsFolder}
+            description={t.settings.clipsFolderDesc}
+            control={
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (isElectron() && window.serenity?.clips?.openFolder) {
+                    void window.serenity.clips.openFolder();
+                  }
+                }}
+              >
+                <FolderOpen className="w-3.5 h-3.5 mr-1.5" />
+                <span>{t.settings.openClipsFolder}</span>
+              </Button>
             }
           />
         </div>

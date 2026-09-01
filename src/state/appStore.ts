@@ -83,6 +83,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...DEFAULT_SETTINGS.overlay,
         ...(storedSettings?.overlay || {}),
       },
+      clips: {
+        ...DEFAULT_SETTINGS.clips,
+        ...(storedSettings?.clips || {}),
+      },
     };
     set({ settings, history, favorites, collections, isHydrated: true });
   },

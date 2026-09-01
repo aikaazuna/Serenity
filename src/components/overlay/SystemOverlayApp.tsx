@@ -1,6 +1,6 @@
-﻿import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { OverlayNotificationPayload } from "@shared/types";
+import type { OverlayNotificationPayload, OverlayNotificationItem } from "@shared/types";
 import {
   Volume2,
   Sliders,
@@ -32,7 +32,8 @@ export const SystemOverlayApp: React.FC = () => {
   const dismissTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleNewPayload = (payload: OverlayNotificationPayload) => {
-    if (!payload || !payload.items || payload.items.length === 0) return;
+    if (!payload) return;
+    if (payload.type !== "clip" && (!payload.items || payload.items.length === 0)) return;
     setNotification(payload);
     setIsOpen(true);
 
@@ -68,7 +69,15 @@ export const SystemOverlayApp: React.FC = () => {
     return undefined;
   }, []);
 
-  const firstItem = notification?.items?.[0];
+  const firstItem: OverlayNotificationItem = notification?.items?.[0] || {
+    id: "default",
+    channelName: notification?.title || "",
+    channelColor: "#0A84FF",
+    target: "headphone",
+    volume: 100,
+    isMuted: false,
+    actionType: "set",
+  };
   const isMulti = Boolean(notification && notification.items && notification.items.length > 1);
   const overlayTheme = notification?.settings?.theme || "glass";
 
@@ -129,7 +138,7 @@ export const SystemOverlayApp: React.FC = () => {
       }}
     >
       <AnimatePresence>
-        {isOpen && notification && firstItem && (
+        {isOpen && notification && (firstItem || notification.type === "clip") && (
           <motion.div
             key="serenity-hud-card"
             initial={{ opacity: 0, y: -12 }}
@@ -179,13 +188,13 @@ export const SystemOverlayApp: React.FC = () => {
                       Actions multiples
                     </div>
                     <div style={{ fontSize: "10px", color: themeProps.subColor }}>
-                      {notification.items.length} pistes modifiées simultanément
+                      {(notification.items ?? []).length} pistes modifiées simultanément
                     </div>
                   </div>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {notification.items.map((item) => (
+                  {(notification.items ?? []).map((item) => (
                     <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", whiteSpace: "nowrap" }}>

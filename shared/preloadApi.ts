@@ -18,7 +18,11 @@ import type {
   OverlayNotificationPayload,
   OverlayNotificationItem,
   MixerGlobalShortcutBinding,
+  MixerChannelVolumeState,
   WindowsAudioSession,
+  AudioDeviceInfo,
+  ClipItem,
+  ClipsSettings,
 } from "./types.js";
 
 export type Unsubscribe = () => void;
@@ -87,8 +91,9 @@ export interface SerenityApi {
   audio: {
     readConfig: () => Promise<string>;
     writeConfig: (content: string) => Promise<boolean>;
-    getAudioDevices: () => Promise<{ name: string; isInstalled: boolean }[]>;
+    getAudioDevices: () => Promise<AudioDeviceInfo[]>;
     getDevices: () => Promise<string[]>;
+    openDeviceSelector: () => Promise<boolean>;
     checkApoInstalled: () => Promise<boolean>;
     getApoPath: () => Promise<string>;
   };
@@ -108,9 +113,37 @@ export interface SerenityApi {
     setProcessMute: (processName: string, isMuted: boolean) => Promise<boolean>;
     setMasterVolume: (volume: number) => Promise<boolean>;
     setMasterMute: (isMuted: boolean) => Promise<boolean>;
+    resetVolumes: () => Promise<boolean>;
+    showHud: (hud: any) => Promise<boolean>;
     registerShortcuts: (bindings: MixerGlobalShortcutBinding[]) => Promise<boolean>;
+    unregisterShortcuts: () => Promise<boolean>;
+    syncState: (states: MixerChannelVolumeState[]) => Promise<boolean>;
     onShortcutAction: (cb: (payload: { channelId: string; target: "headphone" | "stream"; action: "volUp" | "volDown" | "mute" }) => void) => Unsubscribe;
+    onStateUpdated: (cb: (payload: { channelId: string; state: MixerChannelVolumeState }) => void) => Unsubscribe;
+  };
+
+  clips: {
+    getFiles: () => Promise<ClipItem[]>;
+    getDesktopSources: () => Promise<{ id: string; name: string }[]>;
+    saveReplay: (durationSeconds?: number) => Promise<ClipItem | null>;
+    saveVideoBlob: (payload: { buffer: ArrayBuffer; filename?: string; durationSeconds?: number }) => Promise<ClipItem | null>;
+    takeScreenshot: () => Promise<ClipItem | null>;
+    openFolder: () => Promise<boolean>;
+    deleteFile: (filePath: string) => Promise<boolean>;
+    registerShortcuts: (settings: { replayShortcut?: string; screenshotShortcut?: string }) => Promise<boolean>;
+    onReplayTriggered: (cb: () => void) => Unsubscribe;
+    onScreenshotTriggered: (cb: () => void) => Unsubscribe;
   };
 }
 
-export type { AppSettings, OverlayNotificationPayload, OverlayNotificationItem, MixerGlobalShortcutBinding, WindowsAudioSession };
+export type {
+  AppSettings,
+  OverlayNotificationPayload,
+  OverlayNotificationItem,
+  MixerGlobalShortcutBinding,
+  MixerChannelVolumeState,
+  WindowsAudioSession,
+  AudioDeviceInfo,
+  ClipItem,
+  ClipsSettings,
+};

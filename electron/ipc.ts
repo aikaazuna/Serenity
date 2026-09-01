@@ -1,4 +1,4 @@
-import { BrowserWindow, clipboard, dialog, ipcMain, app } from "electron";
+import { BrowserWindow, clipboard, dialog, ipcMain, app, shell, desktopCapturer } from "electron";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
@@ -8,7 +8,8 @@ const execAsync = util.promisify(exec);
 import { IpcChannels, type StoreKey, type StoreSchema, type WindowStatePayload } from "../shared/types.js";
 import { store } from "./store.js";
 import { cancelPicker, confirmPicker, getPickerInitForWebContents, startPicker } from "./windows/pickerWindows.js";
-import { registerPickerShortcut, registerMixerShortcuts, unregisterAllShortcuts } from "./shortcuts.js";
+import { registerPickerShortcut, registerMixerShortcuts, registerClipsShortcuts, unregisterAllShortcuts, updateChannelStates } from "./shortcuts.js";
+import { scanClips, captureScreenshot, saveVideoBlob, deleteClip, openClipsFolder } from "./clips/clipsManager.js";
 import { setAutostart, getAutostart } from "./autostart.js";
 import { getMainWindow } from "./windows/mainWindow.js";
 import {
@@ -77,6 +78,7 @@ export function registerIpcHandlers(): void {
     if (key === "settings") {
       const settings = value as StoreSchema["settings"];
       registerPickerShortcut(settings.pickerShortcut);
+      registerClipsShortcuts(settings.clips);
       setAutostart(settings.launchAtStartup);
     }
 
@@ -180,48 +182,124 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.AudioGetDevices, async () => {
     try {
-      // 1. Try registry query via PowerShell JSON output for 100% reliable UTF-8 decoding & friendly names
-      const psCommand = `powershell.exe -NoProfile -NonInteractive -Command "try { Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Render\\*\\Properties' -ErrorAction SilentlyContinue | ForEach-Object { $name = $_.'{a45c254e-df1c-4efd-8020-67d146a850e0},2'; $desc = $_.'{b3f8fa53-0004-438e-9003-51a46e139bfc},6'; if ($name) { if ($desc -and $desc -ne $name) { \\\"$name ($desc)\\\" } else { \\\"$name\\\" } } } | Sort-Object -Unique | ConvertTo-Json -Compress } catch { @() }"`;
-      
-      let foundNames: string[] = [];
-      try {
-        const { stdout } = await execAsync(psCommand, { encoding: "utf8", timeout: 4000 });
-        if (stdout && stdout.trim()) {
-          const parsed = JSON.parse(stdout.trim());
-          if (Array.isArray(parsed)) foundNames = parsed.filter(Boolean);
-          else if (typeof parsed === "string" && parsed.trim()) foundNames = [parsed.trim()];
+      const psScript = `
+$apoDir = 'C:\\Program Files\\EqualizerAPO'
+$backupFiles = @()
+if (Test-Path $apoDir) {
+  $backupFiles = (Get-ChildItem -Path $apoDir -Filter 'backup_*.reg' -ErrorAction SilentlyContinue).BaseName
+}
+
+$results = @()
+$renderKeys = Get-ChildItem 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Render' -ErrorAction SilentlyContinue
+
+foreach ($rk in $renderKeys) {
+  $guid = $rk.PSChildName
+  $props = Get-ItemProperty "$($rk.PSPath)\\Properties" -ErrorAction SilentlyContinue
+  if (-not $props) { continue }
+  
+  $name = $props.'{a45c254e-df1c-4efd-8020-67d146a850e0},2'
+  $desc = $props.'{b3f8fa53-0004-438e-9003-51a46e139bfc},6'
+  if (-not $name) { continue }
+  
+  $fullName = if ($desc -and ($desc -ne $name)) { "$name ($desc)" } else { $name }
+  
+  $isApo = $false
+  $fx = Get-ItemProperty "$($rk.PSPath)\\FxProperties" -ErrorAction SilentlyContinue
+  if ($fx) {
+    foreach ($p in $fx.PSObject.Properties) {
+      $val = [string]$p.Value
+      if ($val -and ($val -like '*EACD2258*' -or $val -like '*E07010C0*' -or $val -like '*EqualizerAPO*')) {
+        $isApo = $true
+        break
+      }
+    }
+  }
+  
+  if (-not $isApo) {
+    foreach ($b in $backupFiles) {
+      if (($name -and ($b -like "*$name*")) -or ($desc -and ($b -like "*$desc*"))) {
+        $isApo = $true
+        break
+      }
+    }
+  }
+  
+  $results += [PSCustomObject]@{
+    name = $fullName
+    guid = $guid
+    isInstalled = $isApo
+  }
+}
+
+$results | ConvertTo-Json -Compress
+`;
+
+      const b64 = Buffer.from(psScript, "utf16le").toString("base64");
+      const { stdout } = await execAsync(`powershell.exe -NoProfile -NonInteractive -EncodedCommand ${b64}`, {
+        encoding: "utf8",
+        timeout: 5000,
+      });
+
+      let foundList: { name: string; isInstalled: boolean }[] = [];
+      if (stdout && stdout.trim()) {
+        const parsed = JSON.parse(stdout.trim());
+        if (Array.isArray(parsed)) {
+          foundList = parsed.map((d: any) => ({
+            name: String(d.name || "").trim(),
+            isInstalled: Boolean(d.isInstalled),
+          })).filter((d) => d.name);
+        } else if (parsed && typeof parsed === "object" && parsed.name) {
+          foundList = [{ name: String(parsed.name).trim(), isInstalled: Boolean(parsed.isInstalled) }];
         }
-      } catch (err) {
-        console.warn("PowerShell registry device query failed, trying Win32_SoundDevice fallback", err);
       }
 
-      if (foundNames.length === 0) {
-        // Fallback to Win32_SoundDevice
-        try {
-          const { stdout: soundStdout } = await execAsync(
-            `powershell.exe -NoProfile -NonInteractive -Command "Get-CimInstance Win32_SoundDevice -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name | Sort-Object -Unique | ConvertTo-Json -Compress"`,
-            { encoding: "utf8", timeout: 3000 }
-          );
-          if (soundStdout && soundStdout.trim()) {
-            const parsedSound = JSON.parse(soundStdout.trim());
-            if (Array.isArray(parsedSound)) foundNames = parsedSound.filter(Boolean);
-            else if (typeof parsedSound === "string" && parsedSound.trim()) foundNames = [parsedSound.trim()];
-          }
-        } catch {}
+      // Deduplicate by name, keeping isInstalled = true if duplicate
+      const map = new Map<string, boolean>();
+      for (const d of foundList) {
+        if (!map.has(d.name) || d.isInstalled) {
+          map.set(d.name, d.isInstalled);
+        }
       }
 
-      const devices = [{ name: "Toutes les sorties audio", isInstalled: true }];
-      const unique = Array.from(new Set(foundNames)).sort();
-      for (const d of unique) {
-        if (d && typeof d === "string" && d.trim()) {
-          devices.push({ name: d.trim(), isInstalled: true });
-        }
+      const devices: { name: string; isInstalled: boolean }[] = [
+        { name: "Toutes les sorties audio", isInstalled: true }
+      ];
+      for (const [name, isInstalled] of map.entries()) {
+        devices.push({ name, isInstalled });
       }
 
       return devices;
     } catch (e) {
       console.error("Failed to get audio devices", e);
       return [{ name: "Toutes les sorties audio", isInstalled: true }];
+    }
+  });
+
+  // Ouvre le configurateur de périphériques Equalizer APO
+  ipcMain.handle(IpcChannels.AudioOpenDeviceSelector, async () => {
+    try {
+      const candidates = [
+        "C:\\Program Files\\EqualizerAPO\\DeviceSelector.exe",
+        "C:\\Program Files\\EqualizerAPO\\Configurator.exe",
+        "C:\\Program Files\\EqualizerAPO\\Editor.exe",
+        "C:\\Program Files (x86)\\EqualizerAPO\\DeviceSelector.exe",
+        "C:\\Program Files (x86)\\EqualizerAPO\\Configurator.exe",
+      ];
+      for (const c of candidates) {
+        if (fsSync.existsSync(c)) {
+          spawn(c, [], { detached: true, stdio: "ignore" }).unref();
+          return true;
+        }
+      }
+      if (fsSync.existsSync("C:\\Program Files\\EqualizerAPO")) {
+        void shell.openPath("C:\\Program Files\\EqualizerAPO");
+        return true;
+      }
+      void shell.openExternal("https://sourceforge.net/projects/equalizerapo/");
+      return false;
+    } catch (err) {
+      console.error("Failed to open device selector:", err);
+      return false;
     }
   });
 
@@ -245,7 +323,19 @@ export function registerIpcHandlers(): void {
 
   // Enregistrement des raccourcis globaux du Mixer
   ipcMain.handle(IpcChannels.MixerRegisterShortcuts, (_event, bindings) => {
-    return registerMixerShortcuts(bindings);
+    return registerMixerShortcuts(bindings, sendMixerCommand);
+  });
+
+  // Synchronisation de l'état des canaux mixer (volumes, mutes, processus) vers le main process
+  ipcMain.handle(IpcChannels.MixerSyncState, (_event, states) => {
+    try {
+      if (Array.isArray(states)) {
+        updateChannelStates(states);
+      }
+      return true;
+    } catch {
+      return false;
+    }
   });
 
   // Mixer Persistent CoreAudio Worker (Zero-Latency, No process spawn overhead)
@@ -410,4 +500,52 @@ export function registerIpcHandlers(): void {
       return false;
     }
   });
+
+  // Clips & Screenshots Handlers
+  ipcMain.handle(IpcChannels.ClipsGetFiles, async () => {
+    return await scanClips();
+  });
+
+  ipcMain.handle(IpcChannels.ClipsGetDesktopSources, async () => {
+    const sources = await desktopCapturer.getSources({
+      types: ["screen"],
+      thumbnailSize: { width: 150, height: 150 },
+    });
+    return sources.map((s: any) => ({
+      id: s.id,
+      name: s.name,
+    }));
+  });
+
+  ipcMain.handle(IpcChannels.ClipsTakeScreenshot, async () => {
+    return await captureScreenshot();
+  });
+
+  ipcMain.handle(IpcChannels.ClipsSaveReplay, async (_event, durationSeconds?: number) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send(IpcChannels.ClipsOnReplayTriggered, durationSeconds);
+      }
+    }
+    return true;
+  });
+
+  ipcMain.handle(IpcChannels.ClipsSaveVideoBlob, async (_event, payload: { buffer: ArrayBuffer; filename?: string; durationSeconds?: number }) => {
+    if (!payload?.buffer) return null;
+    const buf = Buffer.from(payload.buffer);
+    return await saveVideoBlob(buf, payload.filename, payload.durationSeconds);
+  });
+
+  ipcMain.handle(IpcChannels.ClipsOpenFolder, async () => {
+    return await openClipsFolder();
+  });
+
+  ipcMain.handle(IpcChannels.ClipsDeleteFile, async (_event, filePath: string) => {
+    return await deleteClip(filePath);
+  });
+
+  ipcMain.handle(IpcChannels.ClipsRegisterShortcuts, async (_event, settings: any) => {
+    return registerClipsShortcuts(settings);
+  });
 }
+

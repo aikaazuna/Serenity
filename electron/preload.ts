@@ -1,4 +1,4 @@
-﻿import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 import {
   IpcChannels,
   type PickerCapturedPayload,
@@ -119,6 +119,7 @@ const SerenityApi: SerenityApi = {
       ipcRenderer.invoke(IpcChannels.AudioGetDevices).then((devs: any) =>
         Array.isArray(devs) ? devs.map((d) => (typeof d === "string" ? d : d.name || "Périphérique")) : []
       ),
+    openDeviceSelector: (): Promise<boolean> => ipcRenderer.invoke(IpcChannels.AudioOpenDeviceSelector),
     checkApoInstalled: (): Promise<boolean> => ipcRenderer.invoke(IpcChannels.AudioCheckApoInstalled),
     getApoPath: (): Promise<string> => ipcRenderer.invoke(IpcChannels.AudioGetApoPath),
   },
@@ -147,9 +148,39 @@ const SerenityApi: SerenityApi = {
       ipcRenderer.invoke(IpcChannels.MixerResetVolumes),
     showHud: (hud: any): Promise<boolean> =>
       ipcRenderer.invoke(IpcChannels.MixerShowHud, hud),
-    unregisterShortcuts: () => ipcRenderer.invoke(IpcChannels.MixerUnregisterShortcuts),
+    registerShortcuts: (bindings: any[]) =>
+      ipcRenderer.invoke(IpcChannels.MixerRegisterShortcuts, bindings),
+    unregisterShortcuts: () =>
+      ipcRenderer.invoke(IpcChannels.MixerUnregisterShortcuts),
+    syncState: (states: any[]) =>
+      ipcRenderer.invoke(IpcChannels.MixerSyncState, states),
     onShortcutAction: (cb: (payload: any) => void) =>
       on<any>(IpcChannels.MixerOnShortcutAction, cb),
+    onStateUpdated: (cb: (payload: any) => void) =>
+      on<any>(IpcChannels.MixerOnStateUpdated, cb),
+  },
+
+  clips: {
+    getFiles: (): Promise<any[]> =>
+      ipcRenderer.invoke(IpcChannels.ClipsGetFiles),
+    getDesktopSources: (): Promise<any[]> =>
+      ipcRenderer.invoke(IpcChannels.ClipsGetDesktopSources),
+    saveReplay: (durationSeconds?: number): Promise<any> =>
+      ipcRenderer.invoke(IpcChannels.ClipsSaveReplay, durationSeconds),
+    saveVideoBlob: (payload: { buffer: ArrayBuffer; filename?: string; durationSeconds?: number }): Promise<any> =>
+      ipcRenderer.invoke(IpcChannels.ClipsSaveVideoBlob, payload),
+    takeScreenshot: (): Promise<any> =>
+      ipcRenderer.invoke(IpcChannels.ClipsTakeScreenshot),
+    openFolder: (): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.ClipsOpenFolder),
+    deleteFile: (filePath: string): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.ClipsDeleteFile, filePath),
+    registerShortcuts: (settings: any): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.ClipsRegisterShortcuts, settings),
+    onReplayTriggered: (cb: () => void) =>
+      on<void>(IpcChannels.ClipsOnReplayTriggered, cb),
+    onScreenshotTriggered: (cb: () => void) =>
+      on<void>(IpcChannels.ClipsOnScreenshotTriggered, cb),
   },
 };
 
