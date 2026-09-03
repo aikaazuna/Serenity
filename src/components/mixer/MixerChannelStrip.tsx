@@ -41,10 +41,9 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
   const toggleHeadphoneMute = useMixerStore((s) => s.toggleHeadphoneMute);
   const toggleStreamMute = useMixerStore((s) => s.toggleStreamMute);
   const openChannelSettings = useMixerStore((s) => s.openChannelSettings);
-  const channelPeaks = useMixerStore((s) => s.channelPeaks);
+  const currentPeak = useMixerStore((s) => s.channelPeaks ? (s.channelPeaks[channel.id] || 0) : 0);
 
   const ChannelIcon = getChannelIcon(channel.id);
-  const currentPeak = channelPeaks ? (channelPeaks[channel.id] || 0) : 0;
 
   const isFullyMuted = streamerMode ? (channel.headphoneMuted && channel.streamMuted) : channel.headphoneMuted;
 

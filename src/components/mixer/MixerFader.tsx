@@ -24,10 +24,11 @@ export const MixerFader: React.FC<MixerFaderProps> = ({
   livePeak = 0,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
+  const meterBarRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // Smooth ballistic decay for VU meter (instant attack, progressive smooth decay)
-  const [meterLevel, setMeterLevel] = useState(0);
+  const meterLevelRef = useRef(0);
   const peakTargetRef = useRef(0);
   const animFrameRef = useRef<number | null>(null);
 
@@ -50,7 +51,21 @@ export const MixerFader: React.FC<MixerFaderProps> = ({
         // Smooth exponential decay (smooth falloff)
         current = Math.max(0, current * 0.88 - 0.005);
       }
-      setMeterLevel(current);
+
+      meterLevelRef.current = current;
+
+      if (meterBarRef.current) {
+        const meterPercent = Math.min(100, Math.max(0, Math.round(current * 100)));
+        meterBarRef.current.style.height = `${meterPercent}%`;
+
+        // Only update boxShadow if we pass a certain threshold to avoid excessive layout thrashing
+        if (meterPercent > 5) {
+          meterBarRef.current.style.boxShadow = `0 0 10px ${accentColor}80`;
+        } else {
+          meterBarRef.current.style.boxShadow = 'none';
+        }
+      }
+
       animFrameRef.current = requestAnimationFrame(updateMeter);
     };
 
@@ -105,8 +120,6 @@ export const MixerFader: React.FC<MixerFaderProps> = ({
     onVolumeChange(next);
   };
 
-  const meterPercent = Math.min(100, Math.max(0, Math.round(meterLevel * 100)));
-
   return (
     <div className="flex flex-col items-center justify-between h-full w-full select-none py-1">
       {/* 1. Top Icon with Glowing Indicator Dot */}
@@ -143,12 +156,12 @@ export const MixerFader: React.FC<MixerFaderProps> = ({
         <div className="absolute inset-x-2 inset-y-0 rounded-full bg-neutral-200 dark:bg-black/60 border border-neutral-300 dark:border-white/10 overflow-hidden shadow-inner">
           {/* LED VU Meter Bar (Smooth Green to Yellow to Red Gradient) */}
           <div
-            className="absolute bottom-0 inset-x-0 rounded-full pointer-events-none"
+            ref={meterBarRef}
+            className="absolute bottom-0 inset-x-0 rounded-full pointer-events-none will-change-[height,box-shadow]"
             style={{
-              height: `${meterPercent}%`,
+              height: '0%', // Default height, will be updated by requestAnimationFrame
               background: `linear-gradient(to top, #30D158 0%, #FFD60A 75%, #FF453A 95%)`,
               opacity: isMuted ? 0 : 0.85,
-              boxShadow: meterPercent > 5 ? `0 0 10px ${accentColor}80` : undefined,
             }}
           />
         </div>
