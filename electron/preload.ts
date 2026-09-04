@@ -118,7 +118,7 @@ const SerenityApi: SerenityApi = {
     getDevices: (): Promise<string[]> =>
       ipcRenderer.invoke(IpcChannels.AudioGetDevices).then((devs: any) =>
         Array.isArray(devs) ? devs.map((d) => (typeof d === "string" ? d : d.name || "Périphérique")) : []
-      ),
+      ).catch(() => []),
     openDeviceSelector: (): Promise<boolean> => ipcRenderer.invoke(IpcChannels.AudioOpenDeviceSelector),
     checkApoInstalled: (): Promise<boolean> => ipcRenderer.invoke(IpcChannels.AudioCheckApoInstalled),
     getApoPath: (): Promise<string> => ipcRenderer.invoke(IpcChannels.AudioGetApoPath),

@@ -46,7 +46,7 @@ export const ClipsPage: React.FC = () => {
     const unsubs: (() => void)[] = [];
     if ((window as any).serenity?.clips?.onReplayTriggered) {
       const u1 = (window as any).serenity.clips.onReplayTriggered(() => {
-        void saveReplay().then(() => void loadFiles());
+        void saveReplay().then(() => void loadFiles()).catch(console.error);
       });
       unsubs.push(u1);
     }

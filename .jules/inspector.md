@@ -1,0 +1,1 @@
+## 2025-01-22 - Unhandled Promise Rejections in IPC Calls | **Learning:** `.then()` calls inside `useEffect` or other React lifecycle methods can lead to unhandled promise rejections if the underlying Electron IPC fails, causing silent failures that compromise reliability. | **Action:** Always chain a `.catch()` block when handling asynchronous IPC calls using `.then()`.
