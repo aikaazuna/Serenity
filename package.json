@@ -10,6 +10,7 @@
   "scripts": {
     "start": "npm run app:dev",
     "dev": "vite",
+    "test": "vitest run",
     "build": "tsc -p tsconfig.json --noEmit && npm run build:electron && vite build",
     "build:renderer": "vite build",
     "build:electron": "node scripts/generate-icons.mjs && tsc -p electron/tsconfig.json && node scripts/build-preload.mjs && node scripts/copy-electron-resources.mjs",
@@ -47,6 +48,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -61,12 +63,14 @@
     "eslint": "^8.57.1",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
+    "jsdom": "^30.0.1",
     "png-to-ico": "^3.0.2",
     "postcss": "^8.4.49",
     "sharp": "^0.35.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
+    "vitest": "^5.0.0",
     "wait-on": "^8.0.1"
   },
   "build": {

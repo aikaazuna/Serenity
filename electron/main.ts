@@ -61,4 +61,8 @@ process.on("uncaughtException", (error) => {
   console.error("[main] Exception non interceptée :", error);
 });
 
+process.on("unhandledRejection", (reason) => {
+  console.error("[main] Rejet de promesse non intercepté :", reason);
+});
+
 export {};
