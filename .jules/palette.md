@@ -1,0 +1,1 @@
+## 2024-09-04 - Dynamic Icon-only Buttons | **Learning:** Icon-only buttons whose state changes (e.g. Play vs Pause, Muted vs Unmuted) need dynamic `aria-label`s to inform screen readers of their current purpose. | **Action:** Always ensure that ARIA labels reflect the current state of interactive elements rather than a static string.

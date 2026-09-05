@@ -177,6 +177,8 @@ export const ClipVideoPlayerModal: React.FC = () => {
             <button
               onClick={() => setSelectedClip(null)}
               className="p-2 text-secondary hover:text-[color:var(--text-primary)] hover:bg-[color:var(--panel-bg-strong)] rounded-xl transition cursor-pointer ml-1"
+              aria-label="Fermer"
+              title="Fermer"
             >
               <X className="w-4.5 h-4.5" />
             </button>
@@ -201,6 +203,8 @@ export const ClipVideoPlayerModal: React.FC = () => {
             <button
               onClick={togglePlay}
               className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-md transition-all scale-100 hover:scale-110 shadow-2xl cursor-pointer"
+              aria-label="Lire la vidéo"
+              title="Lire la vidéo"
             >
               <Play className="w-7 h-7 ml-1 fill-white" />
             </button>
@@ -234,6 +238,8 @@ export const ClipVideoPlayerModal: React.FC = () => {
               <button
                 onClick={togglePlay}
                 className="w-9 h-9 rounded-xl bg-[#BF5AF2] hover:bg-[#a844dc] text-white flex items-center justify-center transition shadow-sm cursor-pointer"
+                aria-label={isPlaying ? "Mettre en pause" : "Lire la vidéo"}
+                title={isPlaying ? "Pause" : "Lecture"}
               >
                 {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 ml-0.5 fill-white" />}
               </button>
@@ -242,6 +248,8 @@ export const ClipVideoPlayerModal: React.FC = () => {
                 <button
                   onClick={toggleMute}
                   className="p-2 text-secondary hover:text-[color:var(--text-primary)] rounded-lg transition cursor-pointer"
+                  aria-label={isMuted || volume === 0 ? "Activer le son" : "Couper le son"}
+                  title={isMuted || volume === 0 ? "Activer le son" : "Couper le son"}
                 >
                   {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-amber-500" /> : <Volume2 className="w-4 h-4" />}
                 </button>
