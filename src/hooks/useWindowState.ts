@@ -14,7 +14,7 @@ export function useWindowState(): WindowState {
   useEffect(() => {
     if (!isElectron()) return;
 
-    void window.serenity.window.getState().then(setState);
+    void window.serenity.window.getState().then(setState).catch(console.error);
     return window.serenity.window.onStateChanged(setState);
   }, []);
 

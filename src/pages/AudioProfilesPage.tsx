@@ -178,7 +178,7 @@ export const AudioProfilesPage: React.FC = () => {
               if (isElectron() && window.serenity?.audio?.openDeviceSelector) {
                 window.serenity.audio.openDeviceSelector().then((ok: boolean) => {
                   if (!ok) notify("Configurateur Equalizer APO introuvable", "warning");
-                });
+                }).catch(console.error);
               }
             }}
             className="apple-inner-box flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#0A84FF] hover:bg-[#0A84FF]/10 transition cursor-pointer"

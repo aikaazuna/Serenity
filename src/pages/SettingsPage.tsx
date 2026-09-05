@@ -39,7 +39,7 @@ export function SettingsPage() {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   useEffect(() => {
-    if (isElectron()) void window.serenity.app.getVersion().then(setVersion);
+    if (isElectron()) void window.serenity.app.getVersion().then(setVersion).catch(console.error);
   }, []);
 
   const handleCheckUpdates = async () => {
