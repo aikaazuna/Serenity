@@ -264,14 +264,15 @@ export function initMixerShortcutsSender(sendCmd: (cmd: Record<string, any>) => 
 }
 
 function resolveChannelAlias(query: string): string {
-  const q = (query || "").trim().toLowerCase();
+  const raw = (query || "").trim().toLowerCase();
+  const q = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   if (["game", "jeux", "jeu", "gaming"].includes(q)) return "game";
-  if (["chat", "vc", "voice", "vocal", "discord"].includes(q)) return "chat";
+  if (["chat", "vc", "voice", "vocal", "discord", "voix"].includes(q)) return "chat";
   if (["media", "music", "musique", "spotify", "youtube"].includes(q)) return "media";
-  if (["aux", "autre", "auxiliary", "system"].includes(q)) return "aux";
+  if (["aux", "autre", "auxiliary", "system", "systeme"].includes(q)) return "aux";
   if (["mic", "micro", "microphone"].includes(q)) return "mic";
-  if (["master", "main", "global"].includes(q)) return "master";
-  return q;
+  if (["master", "main", "global", "general", "principal", "tout", "all", "pc", "windows"].includes(q)) return "master";
+  return raw;
 }
 
 export function getChannelStates(): Record<string, MixerChannelVolumeState> {
@@ -330,7 +331,9 @@ export async function setChannelVolumeFromApi(
 
   if (_sendMixerCommand) {
     if (channelId === "master") {
-      void _sendMixerCommand({ action: "set-master-volume", volume: newHeadphoneVolume / 100 });
+      if (target === "headphone" || target === "both") {
+        void _sendMixerCommand({ action: "set-master-volume", volume: newHeadphoneVolume / 100 });
+      }
     } else if (target === "headphone" || target === "both") {
       for (const proc of state.processNames) {
         if (!state.headphoneMuted) {
@@ -397,7 +400,9 @@ export async function setChannelMuteFromApi(
 
   if (_sendMixerCommand) {
     if (channelId === "master") {
-      void _sendMixerCommand({ action: "set-master-mute", isMuted: newHeadphoneMuted });
+      if (target === "headphone" || target === "both") {
+        void _sendMixerCommand({ action: "set-master-mute", isMuted: newHeadphoneMuted });
+      }
     } else if (target === "headphone" || target === "both") {
       for (const proc of state.processNames) {
         if (newHeadphoneMuted) {
