@@ -8,7 +8,7 @@ const execAsync = util.promisify(exec);
 import { IpcChannels, type StoreKey, type StoreSchema, type WindowStatePayload } from "../shared/types.js";
 import { store } from "./store.js";
 import { cancelPicker, confirmPicker, getPickerInitForWebContents, startPicker } from "./windows/pickerWindows.js";
-import { registerPickerShortcut, registerMixerShortcuts, registerClipsShortcuts, unregisterAllShortcuts, updateChannelStates } from "./shortcuts.js";
+import { registerPickerShortcut, registerMixerShortcuts, registerClipsShortcuts, unregisterAllShortcuts, updateChannelStates, initMixerShortcutsSender } from "./shortcuts.js";
 import { scanClips, captureScreenshot, saveVideoBlob, deleteClip, openClipsFolder } from "./clips/clipsManager.js";
 import { setAutostart, getAutostart } from "./autostart.js";
 import { getMainWindow } from "./windows/mainWindow.js";
@@ -404,6 +404,8 @@ $results | ConvertTo-Json -Compress
       }
     });
   }
+
+  initMixerShortcutsSender(sendMixerCommand);
 
   // Mixer WASAPI Audio Sessions & Volume Handlers
   ipcMain.handle(IpcChannels.MixerGetSessions, async () => {

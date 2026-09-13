@@ -8,6 +8,7 @@ import { store } from "./store.js";
 import { setAutostart } from "./autostart.js";
 import { setQuitting } from "./appState.js";
 import { initUpdater } from "./updater.js";
+import { startLocalServer, stopLocalServer } from "./server/localServer.js";
 
 app.name = "Serenity Hub";
 app.setName("Serenity Hub");
@@ -38,6 +39,7 @@ if (!gotSingleInstanceLock) {
     registerPickerShortcut(settings?.pickerShortcut || "CommandOrControl+Shift+C");
     registerClipsShortcuts(settings?.clips);
     setAutostart(settings?.launchAtStartup ?? false);
+    void startLocalServer(4848);
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -54,6 +56,7 @@ if (!gotSingleInstanceLock) {
     setQuitting(true);
     unregisterAllShortcuts();
     destroyTray();
+    stopLocalServer();
   });
 }
 

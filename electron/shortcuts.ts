@@ -258,3 +258,203 @@ export function unregisterAllShortcuts(): void {
 }
 
 
+
+export function initMixerShortcutsSender(sendCmd: (cmd: Record<string, any>) => Promise<any>): void {
+  _sendMixerCommand = sendCmd;
+}
+
+function resolveChannelAlias(query: string): string {
+  const q = (query || "").trim().toLowerCase();
+  if (["game", "jeux", "jeu", "gaming"].includes(q)) return "game";
+  if (["chat", "vc", "voice", "vocal", "discord"].includes(q)) return "chat";
+  if (["media", "music", "musique", "spotify", "youtube"].includes(q)) return "media";
+  if (["aux", "autre", "auxiliary", "system"].includes(q)) return "aux";
+  if (["mic", "micro", "microphone"].includes(q)) return "mic";
+  if (["master", "main", "global"].includes(q)) return "master";
+  return q;
+}
+
+export function getChannelStates(): Record<string, MixerChannelVolumeState> {
+  const result: Record<string, MixerChannelVolumeState> = {};
+  
+  const defaultList: MixerChannelVolumeState[] = [
+    { channelId: "master", channelName: "Master", channelColor: "#FFFFFF", headphoneVolume: 100, streamVolume: 100, headphoneMuted: false, streamMuted: false, processNames: [] },
+    { channelId: "game", channelName: "Jeux", channelColor: "#30D158", headphoneVolume: 100, streamVolume: 100, headphoneMuted: false, streamMuted: false, processNames: [] },
+    { channelId: "chat", channelName: "Chat Vocal", channelColor: "#0A84FF", headphoneVolume: 100, streamVolume: 100, headphoneMuted: false, streamMuted: false, processNames: ["discord.exe"] },
+    { channelId: "media", channelName: "Musique", channelColor: "#FF375F", headphoneVolume: 100, streamVolume: 100, headphoneMuted: false, streamMuted: false, processNames: ["spotify.exe"] },
+    { channelId: "aux", channelName: "Auxiliaire", channelColor: "#BF5AF2", headphoneVolume: 100, streamVolume: 100, headphoneMuted: false, streamMuted: false, processNames: [] },
+    { channelId: "mic", channelName: "Microphone", channelColor: "#FF9F0A", headphoneVolume: 100, streamVolume: 100, headphoneMuted: false, streamMuted: false, processNames: [] },
+  ];
+
+  for (const def of defaultList) {
+    result[def.channelId] = channelStateMap.get(def.channelId) || { ...def };
+  }
+
+  for (const [k, v] of channelStateMap.entries()) {
+    result[k] = { ...v };
+  }
+
+  return result;
+}
+
+export async function setChannelVolumeFromApi(
+  channelQuery: string,
+  target: "headphone" | "stream" | "both" = "headphone",
+  volume?: number,
+  delta?: number
+): Promise<MixerChannelVolumeState | null> {
+  const channelId = resolveChannelAlias(channelQuery);
+  let state = channelStateMap.get(channelId);
+
+  if (!state) {
+    const all = getChannelStates();
+    if (all[channelId]) {
+      state = all[channelId];
+      channelStateMap.set(channelId, state);
+    } else {
+      return null;
+    }
+  }
+
+  let newHeadphoneVolume = state.headphoneVolume;
+  let newStreamVolume = state.streamVolume;
+
+  if (typeof volume === "number") {
+    const clamped = Math.max(0, Math.min(100, Math.round(volume)));
+    if (target === "headphone" || target === "both") newHeadphoneVolume = clamped;
+    if (target === "stream" || target === "both") newStreamVolume = clamped;
+  } else if (typeof delta === "number") {
+    if (target === "headphone" || target === "both") newHeadphoneVolume = Math.max(0, Math.min(100, state.headphoneVolume + delta));
+    if (target === "stream" || target === "both") newStreamVolume = Math.max(0, Math.min(100, state.streamVolume + delta));
+  }
+
+  if (_sendMixerCommand) {
+    if (channelId === "master") {
+      void _sendMixerCommand({ action: "set-master-volume", volume: newHeadphoneVolume / 100 });
+    } else if (target === "headphone" || target === "both") {
+      for (const proc of state.processNames) {
+        if (!state.headphoneMuted) {
+          void _sendMixerCommand({ action: "set-process-volume", processName: proc, volume: newHeadphoneVolume / 100 });
+        }
+      }
+    }
+  }
+
+  const updatedState: MixerChannelVolumeState = {
+    ...state,
+    headphoneVolume: newHeadphoneVolume,
+    streamVolume: newStreamVolume,
+  };
+  channelStateMap.set(channelId, updatedState);
+
+  const appSettings = store.get("settings") as StoreSchema["settings"] | undefined;
+  const vol = target === "stream" ? newStreamVolume : newHeadphoneVolume;
+  showOverlayNotification({
+    type: "volume",
+    items: [{
+      id: `${channelId}-${target}`,
+      channelId,
+      channelName: state.channelName || channelId,
+      channelColor: state.channelColor || "#0A84FF",
+      target: target === "both" ? "headphone" : target,
+      volume: vol,
+      isMuted: target === "stream" ? state.streamMuted : state.headphoneMuted,
+      actionType: "set",
+    }],
+    settings: { ...appSettings?.overlay },
+  });
+
+  notifyRendererStateUpdate(channelId, updatedState);
+  return updatedState;
+}
+
+export async function setChannelMuteFromApi(
+  channelQuery: string,
+  target: "headphone" | "stream" | "both" = "headphone",
+  isMuted?: boolean
+): Promise<MixerChannelVolumeState | null> {
+  const channelId = resolveChannelAlias(channelQuery);
+  let state = channelStateMap.get(channelId);
+
+  if (!state) {
+    const all = getChannelStates();
+    if (all[channelId]) {
+      state = all[channelId];
+      channelStateMap.set(channelId, state);
+    } else {
+      return null;
+    }
+  }
+
+  let newHeadphoneMuted = typeof isMuted === "boolean" ? isMuted : !state.headphoneMuted;
+  let newStreamMuted = typeof isMuted === "boolean" ? isMuted : !state.streamMuted;
+
+  if (target === "headphone") {
+    newStreamMuted = state.streamMuted;
+  } else if (target === "stream") {
+    newHeadphoneMuted = state.headphoneMuted;
+  }
+
+  if (_sendMixerCommand) {
+    if (channelId === "master") {
+      void _sendMixerCommand({ action: "set-master-mute", isMuted: newHeadphoneMuted });
+    } else if (target === "headphone" || target === "both") {
+      for (const proc of state.processNames) {
+        if (newHeadphoneMuted) {
+          void _sendMixerCommand({ action: "set-process-mute", processName: proc, isMuted: true });
+        } else {
+          void _sendMixerCommand({ action: "set-process-volume", processName: proc, volume: state.headphoneVolume / 100 });
+          void _sendMixerCommand({ action: "set-process-mute", processName: proc, isMuted: false });
+        }
+      }
+    }
+  }
+
+  const updatedState: MixerChannelVolumeState = {
+    ...state,
+    headphoneMuted: newHeadphoneMuted,
+    streamMuted: newStreamMuted,
+  };
+  channelStateMap.set(channelId, updatedState);
+
+  const appSettings = store.get("settings") as StoreSchema["settings"] | undefined;
+  const muted = target === "stream" ? newStreamMuted : newHeadphoneMuted;
+  const vol = target === "stream" ? state.streamVolume : state.headphoneVolume;
+
+  showOverlayNotification({
+    type: "volume",
+    items: [{
+      id: `${channelId}-${target}`,
+      channelId,
+      channelName: state.channelName || channelId,
+      channelColor: state.channelColor || "#0A84FF",
+      target: target === "both" ? "headphone" : target,
+      volume: vol,
+      isMuted: muted,
+      actionType: "mute",
+    }],
+    settings: { ...appSettings?.overlay },
+  });
+
+  notifyRendererStateUpdate(channelId, updatedState);
+  return updatedState;
+}
+
+export async function triggerReplayFromApi(durationSeconds?: number): Promise<boolean> {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send(IpcChannels.ClipsOnReplayTriggered, durationSeconds);
+    }
+  }
+  return true;
+}
+
+export async function triggerScreenshotFromApi(): Promise<any> {
+  const item = await captureScreenshot();
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send(IpcChannels.ClipsOnScreenshotTriggered, item);
+    }
+  }
+  return item;
+}
