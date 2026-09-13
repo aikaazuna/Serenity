@@ -106,12 +106,22 @@ export function startLocalServer(port: number = DEFAULT_PORT): Promise<number> {
           const target = ((body.target || params.target || "both") as string).toLowerCase() as "headphone" | "stream" | "both";
 
           let volume: number | undefined;
-          if (body.volume !== undefined) volume = Number(body.volume);
-          else if (params.volume !== undefined) volume = Number(params.volume);
+          if (body.volume !== undefined) {
+            const v = Number(body.volume);
+            if (!Number.isNaN(v)) volume = v;
+          } else if (params.volume !== undefined) {
+            const v = Number(params.volume);
+            if (!Number.isNaN(v)) volume = v;
+          }
 
           let delta: number | undefined;
-          if (body.delta !== undefined) delta = Number(body.delta);
-          else if (params.delta !== undefined) delta = Number(params.delta);
+          if (body.delta !== undefined) {
+            const d = Number(body.delta);
+            if (!Number.isNaN(d)) delta = d;
+          } else if (params.delta !== undefined) {
+            const d = Number(params.delta);
+            if (!Number.isNaN(d)) delta = d;
+          }
 
           const updatedState = await setChannelVolumeFromApi(channel, target, volume, delta);
           if (!updatedState) {

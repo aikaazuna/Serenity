@@ -319,11 +319,11 @@ export async function setChannelVolumeFromApi(
   let newHeadphoneVolume = state.headphoneVolume;
   let newStreamVolume = state.streamVolume;
 
-  if (typeof volume === "number") {
+  if (typeof volume === "number" && !Number.isNaN(volume)) {
     const clamped = Math.max(0, Math.min(100, Math.round(volume)));
     if (target === "headphone" || target === "both") newHeadphoneVolume = clamped;
     if (target === "stream" || target === "both") newStreamVolume = clamped;
-  } else if (typeof delta === "number") {
+  } else if (typeof delta === "number" && !Number.isNaN(delta)) {
     if (target === "headphone" || target === "both") newHeadphoneVolume = Math.max(0, Math.min(100, state.headphoneVolume + delta));
     if (target === "stream" || target === "both") newStreamVolume = Math.max(0, Math.min(100, state.streamVolume + delta));
   }
