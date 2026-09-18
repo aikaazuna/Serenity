@@ -19,7 +19,14 @@ const PAD_X = 38;
 const PAD_Y = 26;
 
 export const InteractiveCurveRenderer: React.FC = () => {
-  const audioState = useAudioStore();
+  // ⚡ Bolt Performance Optimization:
+  // Using atomic selectors to prevent unnecessary re-renders when unrelated audio states change.
+  // See .jules/bolt.md - 2024-05-16
+  const mode = useAudioStore((s) => s.mode);
+  const parametricFilters = useAudioStore((s) => s.parametricFilters);
+  const bassBoost = useAudioStore((s) => s.bassBoost);
+  const trebleAir = useAudioStore((s) => s.trebleAir);
+  const graphicFilters = useAudioStore((s) => s.graphicFilters);
   const updateParametricFilter = useAudioStore((s) => s.updateParametricFilter);
   const addParametricFilter = useAudioStore((s) => s.addParametricFilter);
   const t = useI18n();
@@ -171,13 +178,13 @@ export const InteractiveCurveRenderer: React.FC = () => {
       const x = PAD_X + (i / sampleCount) * (width - PAD_X * 2);
       const freq = xToFreq(x, width);
       const totalGain = EQEngine.calculateCombinedResponse(
-        audioState?.parametricFilters || [],
+        parametricFilters || [],
         freq,
         0,
-        audioState?.bassBoost ?? 0,
-        audioState?.trebleAir ?? 0,
-        audioState?.graphicFilters || {},
-        audioState?.mode || "parametric"
+        bassBoost ?? 0,
+        trebleAir ?? 0,
+        graphicFilters || {},
+        mode || "parametric"
       );
       const y = gainToY(totalGain, height);
       points.push({ x, y });
@@ -221,8 +228,8 @@ export const InteractiveCurveRenderer: React.FC = () => {
       ctx.stroke();
     }
 
-    if (audioState?.mode === "parametric" && Array.isArray(audioState.parametricFilters)) {
-      audioState.parametricFilters.forEach((filter, index) => {
+    if (mode === "parametric" && Array.isArray(parametricFilters)) {
+      parametricFilters.forEach((filter, index) => {
         if (!filter || !filter.enabled) return;
 
         const nx = freqToX(filter.freq || 1000, width);
@@ -283,7 +290,7 @@ export const InteractiveCurveRenderer: React.FC = () => {
     }
   }, [
     dimensions.width,
-    audioState,
+    mode, parametricFilters, bassBoost, trebleAir, graphicFilters,
     hoveredNode,
     draggedNode,
     freqToX,
@@ -293,7 +300,7 @@ export const InteractiveCurveRenderer: React.FC = () => {
 
   const getNodeAtPos = (clientX: number, clientY: number): number | null => {
     const canvas = canvasRef.current;
-    if (!canvas || !audioState?.parametricFilters) return null;
+    if (!canvas || !parametricFilters) return null;
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
 
@@ -302,8 +309,8 @@ export const InteractiveCurveRenderer: React.FC = () => {
     const width = dimensions.width || rect.width;
     const height = 240;
 
-    for (let i = 0; i < audioState.parametricFilters.length; i++) {
-      const f = audioState.parametricFilters[i];
+    for (let i = 0; i < parametricFilters.length; i++) {
+      const f = parametricFilters[i];
       if (!f || !f.enabled) continue;
       const nx = freqToX(f.freq || 1000, width);
       const ny = gainToY(f.gain || 0, height);
@@ -314,7 +321,7 @@ export const InteractiveCurveRenderer: React.FC = () => {
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (audioState?.mode !== "parametric") return;
+    if (mode !== "parametric") return;
     const nodeIdx = getNodeAtPos(e.clientX, e.clientY);
     if (nodeIdx !== null) {
       setDraggedNode(nodeIdx);
@@ -322,7 +329,7 @@ export const InteractiveCurveRenderer: React.FC = () => {
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (audioState?.mode !== "parametric") return;
+    if (mode !== "parametric") return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -351,9 +358,9 @@ export const InteractiveCurveRenderer: React.FC = () => {
   };
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    if (hoveredNode !== null && audioState?.mode === "parametric") {
+    if (hoveredNode !== null && mode === "parametric") {
       e.preventDefault();
-      const current = audioState.parametricFilters?.[hoveredNode];
+      const current = parametricFilters?.[hoveredNode];
       if (current) {
         const delta = e.deltaY < 0 ? 0.1 : -0.1;
         const curQ = current.q ?? 1.41;
@@ -374,7 +381,7 @@ export const InteractiveCurveRenderer: React.FC = () => {
     const width = dimensions.width || rect.width;
     const height = 240;
 
-    if (audioState?.mode === "parametric") {
+    if (mode === "parametric") {
       if (hoveredNode !== null) {
         updateParametricFilter(hoveredNode, { gain: 0 });
       } else {

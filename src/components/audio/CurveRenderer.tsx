@@ -7,7 +7,12 @@ export const CurveRenderer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 200 });
 
-  const { mode, preamp, graphicFilters, parametricFilters } = useAudioStore();
+  // ⚡ Bolt Performance Optimization:
+  // Atomic selectors prevent full re-renders on unrelated state changes.
+  const mode = useAudioStore((s) => s.mode);
+  const preamp = useAudioStore((s) => s.preamp);
+  const graphicFilters = useAudioStore((s) => s.graphicFilters);
+  const parametricFilters = useAudioStore((s) => s.parametricFilters);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -109,7 +114,7 @@ export const CurveRenderer: React.FC = () => {
       ctx.lineTo(x, height);
       ctx.stroke();
       
-      let text = f >= 1000 ? `${f/1000}k` : f.toString();
+      const text = f >= 1000 ? `${f/1000}k` : f.toString();
       ctx.fillText(text, x, height - 5);
     });
 
