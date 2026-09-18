@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useMixerStore } from "@/state/mixerStore";
 import { MixerConsole } from "@/components/mixer/MixerConsole";
@@ -17,7 +17,7 @@ export const MixerPage: React.FC = () => {
   const syncWindowsAudioSessions = useMixerStore((s) => s.syncWindowsAudioSessions);
   const updatePeaks = useMixerStore((s) => s.updatePeaks);
   
-  const [selectedChannelId, setSelectedChannelId] = useState<MixerChannelId>("master");
+  const [selectedChannelId, setSelectedChannelId] = useState<MixerChannelId>("game");
 
   // Periodically detect and sync active Windows audio sessions
   useEffect(() => {

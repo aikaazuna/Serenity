@@ -1,7 +1,8 @@
 import React from "react";
-import type { MixerChannel } from "@/types/mixer";
+import type { MixerChannel, MixerApp } from "@/types/mixer";
 import { useMixerStore } from "@/state/mixerStore";
 import { MixerFader } from "./MixerFader";
+import { nanoid } from "nanoid";
 import {
   Headphones,
   Radio,
@@ -12,6 +13,7 @@ import {
   Mic,
   Volume2,
   Settings,
+  Plus,
 } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -41,6 +43,29 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
   const toggleHeadphoneMute = useMixerStore((s) => s.toggleHeadphoneMute);
   const toggleStreamMute = useMixerStore((s) => s.toggleStreamMute);
   const openChannelSettings = useMixerStore((s) => s.openChannelSettings);
+  const assignApp = useMixerStore((s) => s.assignApp);
+
+  const handleQuickBrowseApp = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (typeof window === "undefined" || !(window as any).serenity?.mixer?.browseApp) return;
+    try {
+      const selected = await (window as any).serenity.mixer.browseApp();
+      if (!selected) return;
+
+      const newApp: MixerApp = {
+        id: `app-custom-${nanoid(6)}`,
+        name: selected.name,
+        executable: selected.executable,
+        color: channel.color,
+        badgeBg: `${channel.color}22`,
+        badgeText: channel.color,
+      };
+
+      assignApp(channel.id, newApp);
+    } catch (err) {
+      console.error("Failed to browse app:", err);
+    }
+  };
 
   const ChannelIcon = getChannelIcon(channel.id);
 
@@ -131,7 +156,49 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
         )}
       </div>
 
+      {/* 3. Applications Footer */}
+      {channel.id !== "master" ? (
+        <div className="pt-2 border-t border-[color:var(--panel-border)] flex flex-col gap-1.5 flex-none">
+          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-secondary">
+            <span className="truncate">Apps ({channel.assignedApps.length})</span>
+            <button
+              type="button"
+              onClick={handleQuickBrowseApp}
+              title="Ajouter un exécutable (.exe)"
+              className="w-5 h-5 rounded flex items-center justify-center text-secondary hover:text-[#0A84FF] hover:bg-[#0A84FF]/10 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
+          <div className="flex flex-wrap gap-1 min-h-[26px] max-h-[54px] overflow-y-auto">
+            {channel.assignedApps.length === 0 ? (
+              <button
+                type="button"
+                onClick={handleQuickBrowseApp}
+                className="w-full text-center py-1 text-[10px] text-tertiary hover:text-[#0A84FF] border border-dashed border-[color:var(--panel-border-strong)] hover:border-[#0A84FF]/40 rounded-lg transition"
+              >
+                + Assigner .exe
+              </button>
+            ) : (
+              channel.assignedApps.map((app) => (
+                <span
+                  key={app.id}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[color:var(--panel-bg-strong)] text-[color:var(--text-primary)] border border-[color:var(--panel-border)] max-w-full truncate"
+                  title={app.executable || app.name}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: channel.color }} />
+                  <span className="truncate">{app.name}</span>
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="pt-2 border-t border-[color:var(--panel-border)] flex items-center justify-center text-[10px] text-tertiary font-semibold uppercase tracking-wider flex-none h-[54px]">
+          Global Windows
+        </div>
+      )}
     </div>
   );
 };

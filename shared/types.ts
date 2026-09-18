@@ -344,6 +344,7 @@ export const IpcChannels = {
   MixerShowHud: "mixer:show-hud",
   MixerSyncState: "mixer:sync-state",
   MixerOnStateUpdated: "mixer:on-state-updated",
+  MixerBrowseApp: "mixer:browse-app",
 
   // Clips & Screenshots
   ClipsGetFiles: "clips:get-files",

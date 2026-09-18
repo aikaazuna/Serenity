@@ -120,6 +120,7 @@ export interface SerenityApi {
     syncState: (states: MixerChannelVolumeState[]) => Promise<boolean>;
     onShortcutAction: (cb: (payload: { channelId: string; target: "headphone" | "stream"; action: "volUp" | "volDown" | "mute" }) => void) => Unsubscribe;
     onStateUpdated: (cb: (payload: { channelId: string; state: MixerChannelVolumeState }) => void) => Unsubscribe;
+    browseApp: () => Promise<{ name: string; executable: string; path: string } | null>;
   };
 
   clips: {

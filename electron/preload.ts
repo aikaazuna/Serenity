@@ -158,6 +158,8 @@ const SerenityApi: SerenityApi = {
       on<any>(IpcChannels.MixerOnShortcutAction, cb),
     onStateUpdated: (cb: (payload: any) => void) =>
       on<any>(IpcChannels.MixerOnStateUpdated, cb),
+    browseApp: (): Promise<{ name: string; executable: string; path: string } | null> =>
+      ipcRenderer.invoke(IpcChannels.MixerBrowseApp),
   },
 
   clips: {

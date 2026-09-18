@@ -287,8 +287,13 @@ $results | ConvertTo-Json -Compress
       ];
       for (const c of candidates) {
         if (fsSync.existsSync(c)) {
-          spawn(c, [], { detached: true, stdio: "ignore" }).unref();
-          return true;
+          const err = await shell.openPath(c);
+          if (!err) return true;
+          // Fallback via Windows shell start pour gérer l'élévation UAC
+          try {
+            spawn("cmd.exe", ["/c", "start", "", c], { detached: true, stdio: "ignore" }).unref();
+            return true;
+          } catch {}
         }
       }
       if (fsSync.existsSync("C:\\Program Files\\EqualizerAPO")) {
@@ -500,6 +505,34 @@ $results | ConvertTo-Json -Compress
       return true;
     } catch {
       return false;
+    }
+  });
+
+  // Sélectionner une application exécutable (.exe) sur le disque
+  ipcMain.handle(IpcChannels.MixerBrowseApp, async () => {
+    try {
+      const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+      const res = await dialog.showOpenDialog(win, {
+        title: "Sélectionner une application (.exe)",
+        properties: ["openFile"],
+        filters: [
+          { name: "Applications Windows (*.exe)", extensions: ["exe"] },
+          { name: "Tous les fichiers (*.*)", extensions: ["*"] },
+        ],
+      });
+      if (!res.canceled && res.filePaths.length > 0) {
+        const filePath = res.filePaths[0];
+        const baseName = path.basename(filePath);
+        return {
+          path: filePath,
+          name: baseName.replace(/\.exe$/i, ""),
+          executable: baseName,
+        };
+      }
+      return null;
+    } catch (err) {
+      console.error("Failed to browse application:", err);
+      return null;
     }
   });
 

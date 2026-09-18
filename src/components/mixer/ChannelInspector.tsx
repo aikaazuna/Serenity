@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMixerStore } from "@/state/mixerStore";
 import type { MixerChannelId, MixerApp } from "@/types/mixer";
-import { Activity, LayoutGrid, Settings, Power, RefreshCw, Plus, X, ArrowRightLeft } from "lucide-react";
+import { Activity, LayoutGrid, Settings, Power, RefreshCw, Plus, X, ArrowRightLeft, FolderOpen, Sliders } from "lucide-react";
 import { InteractiveCurveRenderer } from "@/components/audio/InteractiveCurveRenderer";
 import { ParametricEQ } from "@/components/audio/ParametricEQ";
 import { GraphicEQ } from "@/components/audio/GraphicEQ";
@@ -34,6 +34,27 @@ export const ChannelInspector: React.FC<{ channelId: MixerChannelId }> = ({ chan
       await syncWindowsAudioSessions();
     } finally {
       setTimeout(() => setIsRefreshing(false), 600);
+    }
+  };
+
+  const handleBrowseApp = async () => {
+    if (typeof window === "undefined" || !(window as any).serenity?.mixer?.browseApp) return;
+    try {
+      const selected = await (window as any).serenity.mixer.browseApp();
+      if (!selected) return;
+
+      const newApp: MixerApp = {
+        id: `app-custom-${nanoid(6)}`,
+        name: selected.name,
+        executable: selected.executable,
+        color: channel.color,
+        badgeBg: `${channel.color}22`,
+        badgeText: channel.color,
+      };
+
+      assignApp(channelId, newApp);
+    } catch (err) {
+      console.error("Failed to browse app:", err);
     }
   };
 
@@ -125,95 +146,126 @@ export const ChannelInspector: React.FC<{ channelId: MixerChannelId }> = ({ chan
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              {/* Section 1: Assigned Apps on this Channel */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
+              {channelId === "master" ? (
+                <div className="p-8 border border-dashed border-[#0A84FF]/30 bg-[#0A84FF]/5 rounded-2xl text-center space-y-3 my-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#0A84FF]/15 text-[#0A84FF] flex items-center justify-center mx-auto shadow-sm">
+                    <Sliders className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-bold text-[color:var(--text-primary)]">Piste Générale / Master Windows</h4>
+                  <p className="text-xs text-secondary max-w-md mx-auto leading-relaxed">
+                    Le canal Master contrôle le volume principal global de votre ordinateur.
+                    Pour router et assigner des applications spécifiques (jeux vidéo, Discord, Spotify, navigateurs...), 
+                    cliquez sur une des pistes individuelles ci-dessus (<strong>Jeux</strong>, <strong>Chat Vocal</strong>, <strong>Musique</strong> ou <strong>Auxiliaire</strong>).
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Section 1: Assigned Apps on this Channel */}
                   <div>
-                    <h3 className="text-sm font-bold text-[color:var(--text-primary)]">
-                      Applications assignées à {channel.name}
-                    </h3>
-                    <p className="text-xs text-secondary">
-                      Le son de ces applications est contrôlé par le curseur <strong>{channel.name}</strong>.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleRefresh}
-                    title="Scanner les applications Windows en cours"
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] hover:bg-[color:var(--panel-bg-strong)] text-xs font-semibold transition cursor-pointer shadow-xs"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-[#0A84FF]" : "text-secondary"}`} />
-                    <span>Actualiser</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {channel.assignedApps.length > 0 ? (
-                    channel.assignedApps.map((app) => (
-                      <div
-                        key={app.id}
-                        className="p-3 border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] rounded-xl flex items-center justify-between gap-3 shadow-xs hover:border-[color:var(--panel-border-strong)] transition"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div 
-                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold"
-                            style={{ backgroundColor: `${channel.color}20`, color: channel.color }}
-                          >
-                            {app.name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-[color:var(--text-primary)] truncate block">
-                              {app.name}
-                            </span>
-                            <span className="text-[10px] font-mono text-tertiary truncate block">
-                              {app.executable || app.name}
-                            </span>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => unassignApp(channelId, app.id)}
-                          title={`Retirer ${app.name} de ${channel.name}`}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-500 transition cursor-pointer shrink-0"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-[color:var(--text-primary)]">
+                          Applications assignées à {channel.name}
+                        </h3>
+                        <p className="text-xs text-secondary">
+                          Le son de ces applications est contrôlé par le curseur <strong>{channel.name}</strong>.
+                        </p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="col-span-full p-6 border border-dashed border-[color:var(--panel-border-strong)] rounded-2xl text-center text-xs text-tertiary flex flex-col items-center gap-2">
-                      <LayoutGrid className="w-6 h-6 opacity-40" />
-                      <span>Aucune application n'est actuellement assignée à la piste <strong>{channel.name}</strong>.</span>
-                      <span className="text-[11px] opacity-75">Sélectionnez une application ci-dessous pour la lier à ce canal.</span>
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Section 2: Add Manual Application */}
-              <div className="p-4 rounded-xl border border-[color:var(--panel-border)] bg-[color:var(--panel-bg-strong)]">
-                <form onSubmit={handleAddManualApp} className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={customAppName}
-                      onChange={(e) => setCustomAppName(e.target.value)}
-                      placeholder="Ajouter une application par nom (ex: cs2, valorant, chrome, spotify, discord)..."
-                      className="w-full h-9 px-3.5 text-xs rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] text-[color:var(--text-primary)] focus:outline-none focus:border-[#0A84FF] transition"
-                    />
+                      <button
+                        type="button"
+                        onClick={handleRefresh}
+                        title="Scanner les applications Windows en cours"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] hover:bg-[color:var(--panel-bg-strong)] text-xs font-semibold transition cursor-pointer shadow-xs"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-[#0A84FF]" : "text-secondary"}`} />
+                        <span>Actualiser</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {channel.assignedApps.length > 0 ? (
+                        channel.assignedApps.map((app) => (
+                          <div
+                            key={app.id}
+                            className="p-3 border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] rounded-xl flex items-center justify-between gap-3 shadow-xs hover:border-[color:var(--panel-border-strong)] transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div 
+                                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold"
+                                style={{ backgroundColor: `${channel.color}20`, color: channel.color }}
+                              >
+                                {app.name.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold text-[color:var(--text-primary)] truncate block">
+                                  {app.name}
+                                </span>
+                                <span className="text-[10px] font-mono text-tertiary truncate block">
+                                  {app.executable || app.name}
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => unassignApp(channelId, app.id)}
+                              title={`Retirer ${app.name} de ${channel.name}`}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-500 transition cursor-pointer shrink-0"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="col-span-full p-6 border border-dashed border-[color:var(--panel-border-strong)] rounded-2xl text-center text-xs text-tertiary flex flex-col items-center gap-2">
+                          <LayoutGrid className="w-6 h-6 opacity-40" />
+                          <span>Aucune application n'est actuellement assignée à la piste <strong>{channel.name}</strong>.</span>
+                          <span className="text-[11px] opacity-75">Utilisez le bouton parcourir ci-dessous ou sélectionnez une application détectée.</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={!customAppName.trim()}
-                    className="h-9 px-4 rounded-lg bg-[#0A84FF] hover:bg-[#0071E3] disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Ajouter à {channel.name}</span>
-                  </button>
-                </form>
-              </div>
+
+                  {/* Section 2: Add Manual Application or Browse */}
+                  <div className="p-4 rounded-xl border border-[color:var(--panel-border)] bg-[color:var(--panel-bg-strong)] space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-xs font-bold text-[color:var(--text-primary)]">
+                        Ajouter un jeu ou une application à {channel.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleBrowseApp}
+                        className="h-8 px-3.5 rounded-lg bg-[#0A84FF]/15 hover:bg-[#0A84FF]/25 text-[#0A84FF] border border-[#0A84FF]/30 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                        title="Parcourir vos dossiers Windows pour sélectionner un fichier .exe"
+                      >
+                        <FolderOpen className="w-3.5 h-3.5" />
+                        <span>Parcourir un fichier .exe...</span>
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleAddManualApp} className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={customAppName}
+                          onChange={(e) => setCustomAppName(e.target.value)}
+                          placeholder="Ou entrez un nom de processus (ex: cs2, valorant, chrome, spotify, discord)..."
+                          className="w-full h-9 px-3.5 text-xs rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] text-[color:var(--text-primary)] focus:outline-none focus:border-[#0A84FF] transition"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={!customAppName.trim()}
+                        className="h-9 px-4 rounded-lg bg-[#0A84FF] hover:bg-[#0071E3] disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Ajouter</span>
+                      </button>
+                    </form>
+                  </div>
+                </>
+              )}
 
               {/* Section 3: Discovered / Available Applications to Route */}
               <div className="pt-4 border-t border-[color:var(--panel-border)] space-y-3">
