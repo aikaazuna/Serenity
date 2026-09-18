@@ -365,6 +365,7 @@ export function CommandPalette() {
             <button
               onClick={() => setQuery("")}
               className="text-tertiary hover:text-[color:var(--text-primary)] p-0.5 cursor-pointer"
+              aria-label="Effacer la recherche"
             >
               <X className="h-3.5 w-3.5" />
             </button>
