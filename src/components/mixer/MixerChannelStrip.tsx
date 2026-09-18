@@ -41,7 +41,6 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
   const toggleHeadphoneMute = useMixerStore((s) => s.toggleHeadphoneMute);
   const toggleStreamMute = useMixerStore((s) => s.toggleStreamMute);
   const openChannelSettings = useMixerStore((s) => s.openChannelSettings);
-  const currentPeak = useMixerStore((s) => s.channelPeaks ? (s.channelPeaks[channel.id] || 0) : 0);
 
   const ChannelIcon = getChannelIcon(channel.id);
 
@@ -94,7 +93,8 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
               volume={channel.headphoneVolume}
               isMuted={channel.headphoneMuted}
               accentColor={channel.color}
-              livePeak={currentPeak}
+              channelId={channel.id}
+              peakMultiplier={1}
               onVolumeChange={(val) => setHeadphoneVolume(channel.id, val)}
               onToggleMute={() => toggleHeadphoneMute(channel.id)}
               title={`${channel.name} - ${t.mixer.headphonesMix}`}
@@ -106,7 +106,8 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
               volume={channel.streamVolume}
               isMuted={channel.streamMuted}
               accentColor={channel.color}
-              livePeak={currentPeak * 0.9}
+              channelId={channel.id}
+              peakMultiplier={0.9}
               onVolumeChange={(val) => setStreamVolume(channel.id, val)}
               onToggleMute={() => toggleStreamMute(channel.id)}
               title={`${channel.name} - ${t.mixer.streamMix}`}
@@ -120,7 +121,8 @@ export const MixerChannelStrip: React.FC<MixerChannelStripProps> = ({ channel, i
               volume={channel.headphoneVolume}
               isMuted={channel.headphoneMuted}
               accentColor={channel.color}
-              livePeak={currentPeak}
+              channelId={channel.id}
+              peakMultiplier={1}
               onVolumeChange={(val) => setHeadphoneVolume(channel.id, val)}
               onToggleMute={() => toggleHeadphoneMute(channel.id)}
               title={`${channel.name} - ${t.mixer.headphonesMix}`}

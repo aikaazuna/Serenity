@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Volume2, VolumeX } from "lucide-react";
+import { useMixerStore } from "@/state/mixerStore";
 
 interface MixerFaderProps {
   icon: React.ElementType;
@@ -10,7 +11,8 @@ interface MixerFaderProps {
   onToggleMute: () => void;
   title?: string;
   isStream?: boolean;
-  livePeak?: number;
+  channelId?: string;
+  peakMultiplier?: number;
 }
 
 export const MixerFader: React.FC<MixerFaderProps> = ({
@@ -21,7 +23,8 @@ export const MixerFader: React.FC<MixerFaderProps> = ({
   onVolumeChange,
   onToggleMute,
   title,
-  livePeak = 0,
+  channelId,
+  peakMultiplier = 1,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const meterBarRef = useRef<HTMLDivElement>(null);
@@ -33,12 +36,27 @@ export const MixerFader: React.FC<MixerFaderProps> = ({
   const animFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (!channelId) return;
+
+    // Subscribe directly to Zustand state to avoid React re-renders on high-frequency peak updates
     if (isMuted || volume === 0) {
       peakTargetRef.current = 0;
-    } else {
-      peakTargetRef.current = Math.min(1, Math.max(0, livePeak));
+      return; // No need to subscribe to high-frequency peaks if we know it's muted
     }
-  }, [livePeak, isMuted, volume]);
+
+    const updatePeak = (state: any) => {
+      const livePeak = state.channelPeaks ? (state.channelPeaks[channelId as keyof typeof state.channelPeaks] || 0) : 0;
+      peakTargetRef.current = Math.min(1, Math.max(0, livePeak * peakMultiplier));
+    };
+
+    // Initialize based on current state
+    updatePeak(useMixerStore.getState());
+
+    // Subscribe for future updates
+    const unsub = useMixerStore.subscribe(updatePeak);
+
+    return unsub;
+  }, [channelId, isMuted, volume, peakMultiplier]);
 
   useEffect(() => {
     let current = 0;
@@ -73,7 +91,7 @@ export const MixerFader: React.FC<MixerFaderProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, []);
+  }, [accentColor]);
 
   // Calculate volume from pointer Y position within the track
   const updateVolumeFromPointer = useCallback(
