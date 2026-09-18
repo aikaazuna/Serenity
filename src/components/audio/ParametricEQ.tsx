@@ -105,6 +105,7 @@ export const ParametricEQ: React.FC = () => {
                         : "text-tertiary hover:text-white"
                     }`}
                     title={filter.enabled ? "Désactiver le filtre" : "Activer"}
+                    aria-label={filter.enabled ? "Désactiver le filtre" : "Activer"}
                   >
                     <Power className="w-3.5 h-3.5" />
                   </button>
@@ -113,6 +114,7 @@ export const ParametricEQ: React.FC = () => {
                     onClick={() => removeParametricFilter(index)}
                     className="p-1 text-tertiary hover:text-red-400 hover:bg-red-400/10 rounded-md transition"
                     title="Supprimer le filtre"
+                    aria-label="Supprimer le filtre"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
