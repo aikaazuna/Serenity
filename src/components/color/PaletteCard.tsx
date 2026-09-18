@@ -47,6 +47,7 @@ export function PaletteCard({ palette, onExportPng }: PaletteCardProps) {
         <div className="relative flex items-center gap-1">
           <Tooltip content="Exporter">
             <button
+              aria-label="Exporter la palette"
               onClick={() => setExportOpen((v) => !v)}
               className="flex h-7 w-7 items-center justify-center rounded-lg text-secondary transition hover:bg-[color:var(--panel-bg-strong)] hover:text-[color:var(--text-primary)]"
             >
@@ -86,6 +87,7 @@ export function PaletteCard({ palette, onExportPng }: PaletteCardProps) {
           return (
             <Tooltip key={key} content={hex.toUpperCase()}>
               <button
+                aria-label={`Copier la couleur ${hex}`}
                 onClick={() => copy(hex, key, hex.toUpperCase())}
                 onDoubleClick={() => {
                   addFavorite(hex);
