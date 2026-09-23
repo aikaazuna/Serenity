@@ -152,7 +152,10 @@ export async function getAutoEqPreset(model: AutoEqModelEntry): Promise<AudioPre
       RUNTIME_CACHE.set(model.id, parsed);
       return parsed;
     }
-  } catch {}
+  } catch (error) {
+    console.warn(`[AutoEQ] Corrupted cache for ${model.id}, clearing it:`, error);
+    localStorage.removeItem(`autoeq_cache_${model.id}`);
+  }
 
   // 4. Download on-demand from official AutoEq GitHub
   const rawPath = decodeURIComponent(model.path);
@@ -193,7 +196,9 @@ export async function getAutoEqPreset(model: AutoEqModelEntry): Promise<AudioPre
     RUNTIME_CACHE.set(model.id, preset);
     try {
       localStorage.setItem(`autoeq_cache_${model.id}`, JSON.stringify(preset));
-    } catch {}
+    } catch (error) {
+      console.warn(`[AutoEQ] Failed to save cache for ${model.id}:`, error);
+    }
 
     return preset;
   } catch (error) {
