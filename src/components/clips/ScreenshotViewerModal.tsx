@@ -111,6 +111,7 @@ export const ScreenshotViewerModal: React.FC = () => {
               onClick={handleCopyPath}
               className="p-2 text-secondary hover:text-[color:var(--text-primary)] hover:bg-[color:var(--panel-bg-strong)] rounded-xl transition cursor-pointer"
               title="Copier le chemin"
+              aria-label="Copier le chemin"
             >
               <Download className="w-4 h-4" />
             </button>
@@ -118,6 +119,7 @@ export const ScreenshotViewerModal: React.FC = () => {
               onClick={() => void openFolder()}
               className="p-2 text-secondary hover:text-[color:var(--text-primary)] hover:bg-[color:var(--panel-bg-strong)] rounded-xl transition cursor-pointer"
               title="Ouvrir dans l'Explorateur"
+              aria-label="Ouvrir dans l'Explorateur"
             >
               <FolderOpen className="w-4 h-4" />
             </button>
@@ -125,12 +127,15 @@ export const ScreenshotViewerModal: React.FC = () => {
               onClick={handleDelete}
               className="p-2 text-secondary hover:text-red-400 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
               title="Supprimer la capture"
+              aria-label="Supprimer la capture"
             >
               <Trash2 className="w-4 h-4" />
             </button>
             <button
               onClick={() => setSelectedScreenshot(null)}
               className="p-2 text-secondary hover:text-[color:var(--text-primary)] hover:bg-[color:var(--panel-bg-strong)] rounded-xl transition cursor-pointer ml-1"
+              title="Fermer"
+              aria-label="Fermer"
             >
               <X className="w-4.5 h-4.5" />
             </button>
@@ -152,6 +157,7 @@ export const ScreenshotViewerModal: React.FC = () => {
               onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
               className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
               title="Zoom arrière"
+              aria-label="Zoom arrière"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
@@ -162,13 +168,15 @@ export const ScreenshotViewerModal: React.FC = () => {
               onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
               className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
               title="Zoom avant"
+              aria-label="Zoom avant"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
             <button
               onClick={() => setZoom(1)}
               className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
-              title="Réinitialiser"
+              title="Réinitialiser le zoom"
+              aria-label="Réinitialiser le zoom"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
