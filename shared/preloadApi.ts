@@ -127,7 +127,13 @@ export interface SerenityApi {
     getFiles: () => Promise<ClipItem[]>;
     getDesktopSources: () => Promise<{ id: string; name: string }[]>;
     saveReplay: (durationSeconds?: number) => Promise<ClipItem | null>;
-    saveVideoBlob: (payload: { buffer: ArrayBuffer; filename?: string; durationSeconds?: number }) => Promise<ClipItem | null>;
+    saveVideoBlob: (payload: {
+      buffer?: ArrayBuffer;
+      segments?: ArrayBuffer[];
+      container?: "mp4" | "webm";
+      filename?: string;
+      durationSeconds?: number;
+    }) => Promise<ClipItem | null>;
     takeScreenshot: () => Promise<ClipItem | null>;
     openFolder: () => Promise<boolean>;
     deleteFile: (filePath: string) => Promise<boolean>;

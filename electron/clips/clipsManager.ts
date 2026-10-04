@@ -2,8 +2,10 @@ import { app, shell, clipboard, desktopCapturer, nativeImage, screen } from "ele
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { showOverlayNotification } from "../windows/overlayWindow.js";
 import { store } from "../store.js";
+import { runFfmpeg } from "./ffmpeg.js";
 import type { ClipItem, StoreSchema } from "../../shared/types.js";
 
 export function getClipsDirectory(): string {
@@ -175,6 +177,86 @@ export async function saveVideoBlob(
   } catch (err) {
     console.error("Failed to save video blob:", err);
     return null;
+  }
+}
+
+/**
+ * Assemble des segments WebM autonomes (chacun commence par une image clé et
+ * possède son propre en-tête) en un seul fichier lisible et navigable.
+ * - H.264 -> MP4 (vidéo copiée sans ré-encodage, audio converti en AAC)
+ * - VP8/VP9 -> WebM (copie directe, remuxé avec durée et index corrects)
+ * En cas d'échec de ffmpeg, le segment le plus récent est sauvegardé tel quel.
+ */
+export async function saveReplaySegments(
+  segments: Buffer[],
+  options: { filenameBase?: string; durationSeconds?: number; container?: "mp4" | "webm" }
+): Promise<ClipItem | null> {
+  if (!segments.length) return null;
+
+  const durationSeconds = options.durationSeconds ?? 30;
+  const container = options.container === "mp4" ? "mp4" : "webm";
+  const dateStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const base = (options.filenameBase || `Clip_${dateStr}`).replace(/\.(webm|mp4|mkv)$/i, "");
+
+  const baseDir = getClipsDirectory();
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "serenity-clip-"));
+
+  try {
+    const listLines: string[] = [];
+    for (let i = 0; i < segments.length; i++) {
+      const segPath = path.join(tmpDir, `seg_${String(i).padStart(3, "0")}.webm`);
+      await fs.writeFile(segPath, segments[i]!);
+      listLines.push(`file '${segPath.replace(/\\/g, "/").replace(/'/g, "'\\''")}'`);
+    }
+    const listPath = path.join(tmpDir, "list.txt");
+    await fs.writeFile(listPath, listLines.join("\n"), "utf8");
+
+    const finalFilename = `${base}.${container}`;
+    const tmpOut = path.join(tmpDir, `out.${container}`);
+
+    const codecArgs =
+      container === "mp4"
+        ? ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
+        : ["-c", "copy"];
+
+    await runFfmpeg([
+      "-f", "concat",
+      "-safe", "0",
+      "-i", listPath,
+      "-map", "0:v:0",
+      "-map", "0:a:0?",
+      ...codecArgs,
+      "-avoid_negative_ts", "make_zero",
+      tmpOut,
+    ]);
+
+    const fullPath = path.join(baseDir, finalFilename);
+    await fs.copyFile(tmpOut, fullPath);
+
+    showOverlayNotification({
+      type: "clip",
+      title: `Clip ${durationSeconds}s enregistré !`,
+      subtitle: "Fichier sauvegardé dans Serenity Clips",
+      clipDurationSeconds: durationSeconds,
+      items: [],
+    });
+
+    const stats = await fs.stat(fullPath);
+    return {
+      id: finalFilename,
+      filename: finalFilename,
+      path: fullPath,
+      type: "video",
+      sizeBytes: stats.size,
+      createdAt: Date.now(),
+      durationSeconds,
+    };
+  } catch (err) {
+    console.error("[clips] Assemblage ffmpeg impossible, sauvegarde du dernier segment brut:", err);
+    // Repli : le dernier segment est un WebM autonome et valide à lui seul.
+    return await saveVideoBlob(segments[segments.length - 1]!, `${base}.webm`, durationSeconds);
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 

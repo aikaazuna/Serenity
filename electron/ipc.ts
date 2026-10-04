@@ -9,7 +9,7 @@ import { IpcChannels, type StoreKey, type StoreSchema, type WindowStatePayload }
 import { store } from "./store.js";
 import { cancelPicker, confirmPicker, getPickerInitForWebContents, startPicker } from "./windows/pickerWindows.js";
 import { registerPickerShortcut, registerMixerShortcuts, registerClipsShortcuts, unregisterAllShortcuts, updateChannelStates, initMixerShortcutsSender } from "./shortcuts.js";
-import { scanClips, captureScreenshot, saveVideoBlob, deleteClip, openClipsFolder } from "./clips/clipsManager.js";
+import { scanClips, captureScreenshot, saveVideoBlob, saveReplaySegments, deleteClip, openClipsFolder } from "./clips/clipsManager.js";
 import { setAutostart, getAutostart } from "./autostart.js";
 import { getMainWindow } from "./windows/mainWindow.js";
 import {
@@ -565,11 +565,29 @@ $results | ConvertTo-Json -Compress
     return true;
   });
 
-  ipcMain.handle(IpcChannels.ClipsSaveVideoBlob, async (_event, payload: { buffer: ArrayBuffer; filename?: string; durationSeconds?: number }) => {
-    if (!payload?.buffer) return null;
-    const buf = Buffer.from(payload.buffer);
-    return await saveVideoBlob(buf, payload.filename, payload.durationSeconds);
-  });
+  ipcMain.handle(
+    IpcChannels.ClipsSaveVideoBlob,
+    async (
+      _event,
+      payload: {
+        buffer?: ArrayBuffer;
+        segments?: ArrayBuffer[];
+        container?: "mp4" | "webm";
+        filename?: string;
+        durationSeconds?: number;
+      }
+    ) => {
+      if (payload?.segments?.length) {
+        return await saveReplaySegments(
+          payload.segments.map((s) => Buffer.from(s)),
+          { filenameBase: payload.filename, durationSeconds: payload.durationSeconds, container: payload.container }
+        );
+      }
+      if (!payload?.buffer) return null;
+      const buf = Buffer.from(payload.buffer);
+      return await saveVideoBlob(buf, payload.filename, payload.durationSeconds);
+    }
+  );
 
   ipcMain.handle(IpcChannels.ClipsOpenFolder, async () => {
     return await openClipsFolder();

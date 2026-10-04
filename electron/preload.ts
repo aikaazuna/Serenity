@@ -169,7 +169,13 @@ const SerenityApi: SerenityApi = {
       ipcRenderer.invoke(IpcChannels.ClipsGetDesktopSources),
     saveReplay: (durationSeconds?: number): Promise<any> =>
       ipcRenderer.invoke(IpcChannels.ClipsSaveReplay, durationSeconds),
-    saveVideoBlob: (payload: { buffer: ArrayBuffer; filename?: string; durationSeconds?: number }): Promise<any> =>
+    saveVideoBlob: (payload: {
+      buffer?: ArrayBuffer;
+      segments?: ArrayBuffer[];
+      container?: "mp4" | "webm";
+      filename?: string;
+      durationSeconds?: number;
+    }): Promise<any> =>
       ipcRenderer.invoke(IpcChannels.ClipsSaveVideoBlob, payload),
     takeScreenshot: (): Promise<any> =>
       ipcRenderer.invoke(IpcChannels.ClipsTakeScreenshot),
