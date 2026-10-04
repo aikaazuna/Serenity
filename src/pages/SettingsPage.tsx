@@ -8,6 +8,8 @@ import { useAppStore } from "@/state/appStore";
 import { useI18n } from "@/hooks/useI18n";
 import { isElectron } from "@/lib/utils";
 import { ShieldCheck, Sparkles, Scale, CheckCircle2, RotateCcw, FolderOpen } from "lucide-react";
+import { useClipsStore } from "@/state/clipsStore";
+import { REPLAY_PROFILES, type ReplayQuality } from "@/lib/replay-recorder";
 import type { ReactNode } from "react";
 
 function SettingRow({
@@ -34,6 +36,8 @@ export function SettingsPage() {
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const notify = useAppStore((s) => s.notify);
+  const replayQuality = useClipsStore((s) => s.replayQuality);
+  const setReplayQuality = useClipsStore((s) => s.setReplayQuality);
   const t = useI18n();
   const [version, setVersion] = useState(__APP_VERSION__);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -491,6 +495,32 @@ export function SettingsPage() {
                     {sec}s
                   </button>
                 ))}
+              </div>
+            }
+          />
+          <SettingRow
+            title="Qualité & impact GPU"
+            description="Ajustez la résolution et le framerate de capture pour réduire l'usage GPU en jeu."
+            control={
+              <div className="flex items-center gap-2">
+                {(Object.keys(REPLAY_PROFILES) as ReplayQuality[]).map((q) => {
+                  const prof = REPLAY_PROFILES[q];
+                  return (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setReplayQuality(q)}
+                      title={`${prof.hint} (${prof.videoBitsPerSecond / 1_000_000} Mbps)`}
+                      className={`px-3 py-1 text-xs font-semibold rounded-xl border transition cursor-pointer ${
+                        replayQuality === q
+                          ? "bg-[#0A84FF] text-white border-[#0A84FF] shadow-xs"
+                          : "apple-inner-box text-secondary hover:text-[color:var(--text-primary)]"
+                      }`}
+                    >
+                      {prof.label} ({prof.fps}fps)
+                    </button>
+                  );
+                })}
               </div>
             }
           />

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ClipItem } from "@shared/types";
-import { replayRecorder } from "@/lib/replay-recorder";
+import { replayRecorder, type ReplayQuality } from "@/lib/replay-recorder";
 
 export interface ClipTrack {
   enabled: boolean;
@@ -16,6 +16,7 @@ interface ClipsStoreState {
   filter: "all" | "video" | "screenshot";
   replayActive: boolean;
   replayDuration: number;
+  replayQuality: ReplayQuality;
   tracks: Record<string, ClipTrack>;
   selectedClip: ClipItem | null;
   selectedScreenshot: ClipItem | null;
@@ -34,6 +35,7 @@ interface ClipsStoreState {
   setReplayActive: (active: boolean) => void;
   toggleReplayActive: () => void;
   setReplayDuration: (duration: number) => void;
+  setReplayQuality: (quality: ReplayQuality) => void;
   toggleTrack: (key: string) => void;
   setTrackVol: (key: string, vol: number) => void;
   setSelectedClip: (clip: ClipItem | null) => void;
@@ -54,6 +56,7 @@ export const useClipsStore = create<ClipsStoreState>()(
       filter: "all",
       replayActive: true,
       replayDuration: 30,
+      replayQuality: "balanced",
       tracks: defaultTracks,
       selectedClip: null,
       selectedScreenshot: null,
@@ -183,6 +186,10 @@ export const useClipsStore = create<ClipsStoreState>()(
         else replayRecorder.stop();
       },
       setReplayDuration: (replayDuration) => set({ replayDuration }),
+      setReplayQuality: (replayQuality) => {
+        set({ replayQuality });
+        void replayRecorder.setQuality(replayQuality);
+      },
 
       toggleTrack: (key) =>
         set((state) => {
@@ -216,6 +223,7 @@ export const useClipsStore = create<ClipsStoreState>()(
       partialize: (state) => ({
         replayActive: state.replayActive,
         replayDuration: state.replayDuration,
+        replayQuality: state.replayQuality,
         tracks: state.tracks,
       }),
     }

@@ -20,6 +20,28 @@ const SEGMENT_MS = 5_000;
 /** Durée maximale de replay proposée dans l'UI (120 s) + une marge d'un segment. */
 const MAX_BUFFER_MS = 120_000 + SEGMENT_MS * 2;
 
+export type ReplayQuality = "eco" | "balanced" | "high";
+
+export interface ReplayProfile {
+  label: string;
+  hint: string;
+  maxWidth: number;
+  maxHeight: number;
+  fps: number;
+  videoBitsPerSecond: number;
+}
+
+/**
+ * Le coût GPU (capture + encodage matériel) est quasi proportionnel à
+ * pixels × images/seconde. Plafonner la résolution et le framerate est donc le
+ * levier le plus efficace pour alléger le buffer pendant les jeux.
+ */
+export const REPLAY_PROFILES: Record<ReplayQuality, ReplayProfile> = {
+  eco: { label: "Éco", hint: "720p · 30 fps", maxWidth: 1280, maxHeight: 720, fps: 30, videoBitsPerSecond: 3_000_000 },
+  balanced: { label: "Équilibré", hint: "1080p · 30 fps", maxWidth: 1920, maxHeight: 1080, fps: 30, videoBitsPerSecond: 5_000_000 },
+  high: { label: "Haute", hint: "1080p · 60 fps", maxWidth: 1920, maxHeight: 1080, fps: 60, videoBitsPerSecond: 8_000_000 },
+};
+
 interface Segment {
   blob: Blob;
   startedAt: number;
@@ -50,9 +72,23 @@ class ReplayRecorderEngine {
   private segments: Segment[] = [];
   private mimeType = "video/webm";
   private container: "mp4" | "webm" = "webm";
+  private quality: ReplayQuality = "balanced";
   private isRunning = false;
   private isStarting = false;
   private cycleTimer: ReturnType<typeof setInterval> | null = null;
+
+  public async setQuality(quality: ReplayQuality): Promise<void> {
+    if (this.quality === quality) return;
+    this.quality = quality;
+    if (this.isRunning) {
+      this.stop();
+      await this.start();
+    }
+  }
+
+  public getQuality(): ReplayQuality {
+    return this.quality;
+  }
 
   public async start(): Promise<boolean> {
     if (this.isRunning || this.isStarting) return true;
@@ -69,7 +105,10 @@ class ReplayRecorderEngine {
 
       const primarySource = sources.find((s: any) => s.id.startsWith("screen")) || sources[0];
 
-      // 1. Capture écran + audio système
+      const profile = REPLAY_PROFILES[this.quality];
+
+      // 1. Capture écran + audio système, plafonnée en résolution / framerate
+      //    (pas de minFrameRate : on n'oblige plus à pousser des images quand l'écran est statique).
       const desktopStream: MediaStream = await (navigator.mediaDevices as any).getUserMedia({
         audio: {
           mandatory: {
@@ -80,8 +119,9 @@ class ReplayRecorderEngine {
           mandatory: {
             chromeMediaSource: "desktop",
             chromeMediaSourceId: primarySource.id,
-            minFrameRate: 30,
-            maxFrameRate: 60,
+            maxWidth: profile.maxWidth,
+            maxHeight: profile.maxHeight,
+            maxFrameRate: profile.fps,
           },
         },
       });
@@ -104,7 +144,7 @@ class ReplayRecorderEngine {
 
       this.isRunning = true;
       this.isStarting = false;
-      console.log("[replay-recorder] Replay buffer running with", this.mimeType, "->", this.container);
+      console.log("[replay-recorder] Replay buffer running with", this.mimeType, "->", this.container, `(${this.quality}: ${profile.hint})`);
       return true;
     } catch (err) {
       console.error("[replay-recorder] Failed to start replay stream:", err);
@@ -114,9 +154,10 @@ class ReplayRecorderEngine {
   }
 
   private startSegment(): ActiveSegment {
+    const profile = REPLAY_PROFILES[this.quality];
     const recorder = new MediaRecorder(this.stream!, {
       mimeType: this.mimeType,
-      videoBitsPerSecond: 8_000_000,
+      videoBitsPerSecond: profile.videoBitsPerSecond,
     });
     const parts: Blob[] = [];
     const startedAt = Date.now();

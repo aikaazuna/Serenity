@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Film, Gamepad2, Mic, Mic2, Music, Zap, Save, Camera, FolderOpen, Clock, Settings2, X } from "lucide-react";
+import { Film, Gamepad2, Mic, Mic2, Music, Zap, Save, Camera, FolderOpen, Clock, Settings2, X, Gauge } from "lucide-react";
 import { useClipsStore } from "@/state/clipsStore";
 import { useAppStore } from "@/state/appStore";
 import { ShortcutRecorder } from "@/components/settings/ShortcutRecorder";
 import { isElectron } from "@/lib/utils";
+import { REPLAY_PROFILES, type ReplayQuality } from "@/lib/replay-recorder";
 
 const trackIcons: Record<string, any> = {
   game: Gamepad2,
@@ -20,6 +21,8 @@ export const ClipsAudioMixer: React.FC = () => {
   const toggleReplayActive = useClipsStore((s) => s.toggleReplayActive);
   const replayDuration = useClipsStore((s) => s.replayDuration);
   const setReplayDuration = useClipsStore((s) => s.setReplayDuration);
+  const replayQuality = useClipsStore((s) => s.replayQuality);
+  const setReplayQuality = useClipsStore((s) => s.setReplayQuality);
   const saveReplay = useClipsStore((s) => s.saveReplay);
   const takeScreenshot = useClipsStore((s) => s.takeScreenshot);
   const openFolder = useClipsStore((s) => s.openFolder);
@@ -117,7 +120,7 @@ export const ClipsAudioMixer: React.FC = () => {
         {/* Quick Action Controls */}
         <div className="flex items-center flex-wrap gap-2">
           {/* Duration Selector */}
-          <div className="apple-inner-box flex items-center p-1 rounded-xl gap-1">
+          <div className="apple-inner-box flex items-center p-1 rounded-xl gap-1" title="Durée du clip replay">
             <Clock className="w-3.5 h-3.5 text-secondary ml-1.5" />
             {[15, 30, 60, 120].map((sec) => (
               <button
@@ -133,6 +136,30 @@ export const ClipsAudioMixer: React.FC = () => {
                 {sec}s
               </button>
             ))}
+          </div>
+
+          {/* Quality / GPU Load Selector */}
+          <div className="apple-inner-box flex items-center p-1 rounded-xl gap-1" title="Qualité & impact GPU du Replay Buffer">
+            <Gauge className="w-3.5 h-3.5 text-secondary ml-1.5" />
+            {(Object.keys(REPLAY_PROFILES) as ReplayQuality[]).map((q) => {
+              const prof = REPLAY_PROFILES[q];
+              const isSelected = replayQuality === q;
+              return (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setReplayQuality(q)}
+                  title={`${prof.label} : ${prof.hint} (${prof.videoBitsPerSecond / 1_000_000} Mbps)`}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-[#0A84FF] text-white shadow-xs"
+                      : "text-secondary hover:text-[color:var(--text-primary)]"
+                  }`}
+                >
+                  {prof.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Replay Buffer Toggle */}

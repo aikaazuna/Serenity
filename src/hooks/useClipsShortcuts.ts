@@ -8,16 +8,18 @@ import type { ClipItem } from "@shared/types";
 export function useClipsShortcuts(): void {
   const replayActive = useClipsStore((s) => s.replayActive);
   const replayDuration = useClipsStore((s) => s.replayDuration);
+  const replayQuality = useClipsStore((s) => s.replayQuality);
   const settings = useAppStore((s) => s.settings);
 
-  // 1. Démarre / arrête le buffer de replay selon l'état
+  // 1. Démarre / arrête le buffer de replay selon l'état et synchronise la qualité
   useEffect(() => {
+    void replayRecorder.setQuality(replayQuality);
     if (replayActive) {
       void replayRecorder.start();
     } else {
       replayRecorder.stop();
     }
-  }, [replayActive]);
+  }, [replayActive, replayQuality]);
 
   // 2. Enregistre les raccourcis configurés auprès du main process
   useEffect(() => {
