@@ -258,6 +258,7 @@ export const ClipsAudioMixer: React.FC = () => {
                         color: tr.enabled ? tr.color : "gray",
                       }}
                       title={tr.enabled ? "Désactiver de l'enregistrement" : "Activer dans l'enregistrement"}
+                      aria-label={tr.enabled ? "Désactiver de l'enregistrement" : "Activer dans l'enregistrement"}
                     >
                       <Icon className="w-3.5 h-3.5" />
                     </button>
