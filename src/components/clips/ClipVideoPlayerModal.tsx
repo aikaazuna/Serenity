@@ -157,6 +157,7 @@ export const ClipVideoPlayerModal: React.FC = () => {
               onClick={handleCopyPath}
               className="p-2 text-secondary hover:text-[color:var(--text-primary)] hover:bg-[color:var(--panel-bg-strong)] rounded-xl transition cursor-pointer"
               title="Copier le chemin"
+              aria-label="Copier le chemin"
             >
               <Copy className="w-4 h-4" />
             </button>
@@ -164,6 +165,7 @@ export const ClipVideoPlayerModal: React.FC = () => {
               onClick={() => void openFolder()}
               className="p-2 text-secondary hover:text-[color:var(--text-primary)] hover:bg-[color:var(--panel-bg-strong)] rounded-xl transition cursor-pointer"
               title="Ouvrir dans l'Explorateur"
+              aria-label="Ouvrir dans l'Explorateur"
             >
               <FolderOpen className="w-4 h-4" />
             </button>
@@ -171,6 +173,7 @@ export const ClipVideoPlayerModal: React.FC = () => {
               onClick={handleDelete}
               className="p-2 text-secondary hover:text-red-400 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
               title="Supprimer le clip"
+              aria-label="Supprimer le clip"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -270,6 +273,7 @@ export const ClipVideoPlayerModal: React.FC = () => {
                 onClick={toggleFullscreen}
                 className="p-2 text-secondary hover:text-[color:var(--text-primary)] hover:bg-[color:var(--panel-bg)] rounded-xl transition cursor-pointer"
                 title="Plein écran"
+                aria-label="Plein écran"
               >
                 <Maximize className="w-4 h-4" />
               </button>
