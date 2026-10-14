@@ -38,6 +38,6 @@ export function getAudioMixerBinaryPath(): string {
     if (fsSync.existsSync(unpackedPath)) {
       return unpackedPath;
     }
-  } catch {}
+  } catch { /* ignore */ }
   return resourcePath("audio-mixer.exe");
 }

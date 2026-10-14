@@ -192,7 +192,7 @@ class ReplayRecorderEngine {
 
     try {
       if (finishing.recorder.state !== "inactive") finishing.recorder.stop();
-    } catch {}
+    } catch { /* ignore */ }
 
     const segment = await finishing.done;
     if (segment) {
@@ -213,7 +213,7 @@ class ReplayRecorderEngine {
     if (this.active && this.active.recorder.state !== "inactive") {
       try {
         this.active.recorder.stop();
-      } catch {}
+      } catch { /* ignore */ }
     }
     this.active = null;
     if (this.stream) {

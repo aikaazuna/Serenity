@@ -293,7 +293,7 @@ $results | ConvertTo-Json -Compress
           try {
             spawn("cmd.exe", ["/c", "start", "", c], { detached: true, stdio: "ignore" }).unref();
             return true;
-          } catch {}
+          } catch { /* ignore */ }
         }
       }
       if (fsSync.existsSync("C:\\Program Files\\EqualizerAPO")) {

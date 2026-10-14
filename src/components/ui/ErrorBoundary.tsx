@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
       localStorage.removeItem("serenity-audio-storage-v2");
       localStorage.removeItem("serenity-audio-storage-v3");
       localStorage.removeItem("serenity-ui-storage");
-    } catch {}
+    } catch { /* ignore */ }
     window.location.reload();
   };
 

@@ -33,7 +33,7 @@ export async function scanClips(): Promise<ClipItem[]> {
 
     const items: ClipItem[] = [];
 
-    async function processDirectory(dir: string) {
+    const processDirectory = async function(dir: string) {
       if (!fsSync.existsSync(dir)) return;
       const entries = await fs.readdir(dir, { withFileTypes: true });
 

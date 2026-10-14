@@ -41,6 +41,7 @@ export const MixerPage: React.FC = () => {
           updatePeaks(peaks);
         }
       } catch {
+        // ignore
       } finally {
         isFetching = false;
       }
