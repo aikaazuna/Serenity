@@ -54,7 +54,7 @@ export const AudioTestPage: React.FC = () => {
     const ctx = getAudioContext();
 
     if (oscRef.current) {
-      try { oscRef.current.stop(); } catch {}
+      try { oscRef.current.stop(); } catch { /* ignore */ }
     }
 
     const osc = ctx.createOscillator();
@@ -76,7 +76,7 @@ export const AudioTestPage: React.FC = () => {
 
   const stopTone = () => {
     if (oscRef.current) {
-      try { oscRef.current.stop(); } catch {}
+      try { oscRef.current.stop(); } catch { /* ignore */ }
       oscRef.current = null;
     }
     setIsPlayingTone(false);
@@ -109,7 +109,7 @@ export const AudioTestPage: React.FC = () => {
     const ctx = getAudioContext();
 
     if (noiseSourceRef.current) {
-      try { noiseSourceRef.current.stop(); } catch {}
+      try { noiseSourceRef.current.stop(); } catch { /* ignore */ }
     }
 
     const bufferSize = ctx.sampleRate * 2;
@@ -161,7 +161,7 @@ export const AudioTestPage: React.FC = () => {
 
   const stopNoise = () => {
     if (noiseSourceRef.current) {
-      try { noiseSourceRef.current.stop(); } catch {}
+      try { noiseSourceRef.current.stop(); } catch { /* ignore */ }
       noiseSourceRef.current = null;
     }
     setIsPlayingNoise(null);
@@ -173,7 +173,7 @@ export const AudioTestPage: React.FC = () => {
     const ctx = getAudioContext();
 
     if (oscRef.current) {
-      try { oscRef.current.stop(); } catch {}
+      try { oscRef.current.stop(); } catch { /* ignore */ }
     }
 
     const osc = ctx.createOscillator();
@@ -217,7 +217,7 @@ export const AudioTestPage: React.FC = () => {
       sweepIntervalRef.current = null;
     }
     if (oscRef.current) {
-      try { oscRef.current.stop(); } catch {}
+      try { oscRef.current.stop(); } catch { /* ignore */ }
       oscRef.current = null;
     }
     setIsSweeping(false);

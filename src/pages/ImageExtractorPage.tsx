@@ -109,7 +109,7 @@ export const ImageExtractorPage: React.FC = () => {
       const hex = rgbToHex({ r: pixel[0] as number, g: pixel[1] as number, b: pixel[2] as number });
       setHoverColor(hex);
       setHoverPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    } catch {}
+    } catch { /* ignore */ }
   };
 
   const handleCanvasClick = () => {

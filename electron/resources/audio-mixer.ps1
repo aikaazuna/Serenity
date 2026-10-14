@@ -1,3 +1,4 @@
+$ErrorActionPreference = "Stop"
 param(
     [string]$Action = "list",
     [string]$ProcessName = "",
@@ -7,7 +8,7 @@ param(
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$ErrorActionPreference = "SilentlyContinue"
+
 
 $csharp = @"
 using System;
