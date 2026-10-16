@@ -149,6 +149,7 @@ export const AudioEffectsRack: React.FC = () => {
               type="button"
               role="switch"
               aria-checked={crossfeed}
+              aria-label={t.audio.crossfeed}
               onClick={toggleCrossfeed}
               className={`w-11 h-6 rounded-full transition-colors duration-200 p-0.5 cursor-pointer shrink-0 flex items-center ${
                 crossfeed ? 'bg-[#0A84FF]' : 'bg-black/25 dark:bg-white/20'
@@ -177,6 +178,7 @@ export const AudioEffectsRack: React.FC = () => {
               type="button"
               role="switch"
               aria-checked={loudnessGuard}
+              aria-label={t.audio.loudnessGuard}
               onClick={toggleLoudnessGuard}
               className={`w-11 h-6 rounded-full transition-colors duration-200 p-0.5 cursor-pointer shrink-0 flex items-center ${
                 loudnessGuard ? 'bg-[#30D158]' : 'bg-black/25 dark:bg-white/20'

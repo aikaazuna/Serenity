@@ -164,6 +164,7 @@ export const ClipsPage: React.FC = () => {
                 isLoading ? "animate-spin" : ""
               }`}
               title="Rafraîchir la galerie"
+              aria-label="Rafraîchir la galerie"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
