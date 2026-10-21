@@ -24,7 +24,9 @@ export async function getStoreValue<K extends StoreKey>(key: K): Promise<StoreSc
   if (!raw) return FALLBACK_DEFAULTS[key];
   try {
     return JSON.parse(raw) as StoreSchema[K];
-  } catch {
+  } catch (e) {
+    console.error(`[Persistence] Failed to parse JSON for key ${key}, removing corrupted data`, e);
+    localStorage.removeItem(LOCAL_KEY_PREFIX + key);
     return FALLBACK_DEFAULTS[key];
   }
 }
