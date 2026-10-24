@@ -83,12 +83,27 @@ export class EQEngine {
     }
 
     let effectivePreamp = state.preamp || 0;
+    let autoAdjusted = false;
     
-    if (state.loudnessGuard && state.bassBoost > 0) {
-      effectivePreamp -= state.bassBoost * 0.35;
+    if (state.loudnessGuard) {
+      const rawPeakGain = this.calculatePeakGain(
+        state.parametricFilters,
+        0,
+        state.bassBoost || 0,
+        state.trebleAir || 0,
+        state.graphicFilters,
+        state.mode || 'parametric'
+      );
+
+      // Si la crête globale (préampli + gain maximal) dépasse 0 dB,
+      // on ajuste automatiquement le préampli pour maintenir le signal sous 0 dBFS (anti-pompage)
+      if (rawPeakGain > 0 && effectivePreamp + rawPeakGain > 0) {
+        effectivePreamp = -rawPeakGain - 0.2;
+        autoAdjusted = true;
+      }
     }
     
-    lines.push(`Preamp: ${effectivePreamp.toFixed(2)} dB`);
+    lines.push(`Preamp: ${effectivePreamp.toFixed(2)} dB${autoAdjusted ? ' # Auto-ajusté par Anti-Saturation (Protection 0 dB)' : ''}`);
 
     if (state.mode === 'graphic' && state.graphicFilters) {
       lines.push(this.generateGraphicEQLine(state.graphicFilters));
@@ -281,6 +296,86 @@ export class EQEngine {
     }
 
     return isNaN(totalGain) ? 0 : totalGain;
+  }
+
+  /**
+   * Calcule le gain maximal (crête) de la réponse en fréquence (en dB).
+   * Analyse les fréquences centrales des filtres ainsi qu'un échantillonnage logarithmique entre 20 Hz et 20 kHz.
+   */
+  static calculatePeakGain(
+    filters: ParametricFilter[] | undefined,
+    preamp = 0,
+    bassBoost = 0,
+    trebleAir = 0,
+    graphicFilters?: Record<number, number>,
+    mode: 'graphic' | 'parametric' = 'parametric',
+    sampleRate = 48000
+  ): number {
+    const freqsToTest = new Set<number>();
+
+    if (mode === 'parametric' && filters && Array.isArray(filters)) {
+      for (const f of filters) {
+        if (f && f.enabled && f.freq >= 20 && f.freq <= 20000) {
+          const fc = Math.round(f.freq);
+          freqsToTest.add(fc);
+          freqsToTest.add(Math.max(20, Math.round(fc * 0.85)));
+          freqsToTest.add(Math.min(20000, Math.round(fc * 1.15)));
+        }
+      }
+    } else if (mode === 'graphic' && graphicFilters && typeof graphicFilters === 'object') {
+      for (const [fStr, gain] of Object.entries(graphicFilters)) {
+        const fc = Number(fStr);
+        if (fc >= 20 && fc <= 20000 && Math.abs(gain || 0) > 0.05) {
+          freqsToTest.add(fc);
+        }
+      }
+    }
+
+    if (bassBoost > 0) {
+      freqsToTest.add(20);
+      freqsToTest.add(30);
+      freqsToTest.add(50);
+      freqsToTest.add(80);
+      freqsToTest.add(100);
+      freqsToTest.add(120);
+    }
+    if (trebleAir > 0) {
+      freqsToTest.add(8000);
+      freqsToTest.add(10000);
+      freqsToTest.add(12000);
+      freqsToTest.add(14000);
+      freqsToTest.add(16000);
+      freqsToTest.add(18000);
+      freqsToTest.add(20000);
+    }
+
+    // Échantillonnage logarithmique régulier (40 points entre 20 Hz et 20 kHz)
+    const logMin = Math.log10(20);
+    const logMax = Math.log10(20000);
+    const steps = 40;
+    for (let i = 0; i <= steps; i++) {
+      const f = Math.round(Math.pow(10, logMin + (i / steps) * (logMax - logMin)));
+      freqsToTest.add(f);
+    }
+
+    let maxGain = -Infinity;
+    for (const freq of freqsToTest) {
+      const gain = this.calculateCombinedResponse(
+        filters,
+        freq,
+        preamp,
+        bassBoost,
+        trebleAir,
+        graphicFilters,
+        mode,
+        sampleRate
+      );
+      if (gain > maxGain) {
+        maxGain = gain;
+      }
+    }
+
+    return isFinite(maxGain) ? maxGain : preamp;
   }
   
   static getBands(count: number): number[] {

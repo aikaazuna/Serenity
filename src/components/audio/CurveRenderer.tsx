@@ -13,6 +13,8 @@ export const CurveRenderer: React.FC = () => {
   const preamp = useAudioStore((s) => s.preamp);
   const graphicFilters = useAudioStore((s) => s.graphicFilters);
   const parametricFilters = useAudioStore((s) => s.parametricFilters);
+  const bassBoost = useAudioStore((s) => s.bassBoost) ?? 0;
+  const trebleAir = useAudioStore((s) => s.trebleAir) ?? 0;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -156,7 +158,15 @@ export const CurveRenderer: React.FC = () => {
       const p = x / width;
       const freq = Math.pow(10, logMin + p * (logMax - logMin));
       
-      const db = EQEngine.calculateCombinedResponse(filters, freq, preamp);
+      const db = EQEngine.calculateCombinedResponse(
+        filters,
+        freq,
+        preamp,
+        bassBoost,
+        trebleAir,
+        graphicFilters,
+        mode
+      );
       const y = dbToY(Math.max(minDb, Math.min(maxDb, db)));
       
       ctx.lineTo(x, y);
@@ -173,7 +183,15 @@ export const CurveRenderer: React.FC = () => {
       const p = x / width;
       const freq = Math.pow(10, logMin + p * (logMax - logMin));
       
-      const db = EQEngine.calculateCombinedResponse(filters, freq, preamp);
+      const db = EQEngine.calculateCombinedResponse(
+        filters,
+        freq,
+        preamp,
+        bassBoost,
+        trebleAir,
+        graphicFilters,
+        mode
+      );
       const y = dbToY(Math.max(minDb, Math.min(maxDb, db)));
       
       if (!started) {
@@ -187,7 +205,7 @@ export const CurveRenderer: React.FC = () => {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-  }, [dimensions, mode, preamp, graphicFilters, parametricFilters]);
+  }, [dimensions, mode, preamp, graphicFilters, parametricFilters, bassBoost, trebleAir]);
 
   return (
     <div ref={containerRef} className="w-full h-[200px] bg-[#15151e] rounded-xl overflow-hidden border border-white/5 relative">

@@ -3,6 +3,7 @@ import { useAudioStore } from "@/state/audioStore";
 import { useAppStore } from "@/state/appStore";
 import { useI18n } from "@/hooks/useI18n";
 import { isElectron } from "@/lib/utils";
+import { EQEngine } from "@/lib/eq-engine";
 import {
   Speaker,
   RotateCcw,
@@ -13,6 +14,7 @@ import {
   AlertTriangle,
   Wrench,
   AlertCircle,
+  ShieldCheck,
 } from "lucide-react";
 
 interface AudioDeviceItem {
@@ -32,6 +34,13 @@ export const AudioHeader: React.FC = () => {
   const resetEq = useAudioStore((s) => s.resetEq);
   const setParametricFilters = useAudioStore((s) => s.setParametricFilters);
   const setMode = useAudioStore((s) => s.setMode);
+  const bassBoost = useAudioStore((s) => s.bassBoost) ?? 0;
+  const trebleAir = useAudioStore((s) => s.trebleAir) ?? 0;
+  const graphicFilters = useAudioStore((s) => s.graphicFilters);
+  const parametricFilters = useAudioStore((s) => s.parametricFilters);
+  const mode = useAudioStore((s) => s.mode);
+  const loudnessGuard = useAudioStore((s) => s.loudnessGuard);
+  const autoAlignPreamp = useAudioStore((s) => s.autoAlignPreamp);
   const notify = useAppStore((s) => s.notify);
   const t = useI18n();
 
@@ -163,7 +172,16 @@ export const AudioHeader: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const isClippingRisk = preamp > 3;
+  const rawPeakGain = React.useMemo(() => {
+    return EQEngine.calculatePeakGain(parametricFilters, 0, bassBoost, trebleAir, graphicFilters, mode);
+  }, [parametricFilters, bassBoost, trebleAir, graphicFilters, mode]);
+
+  const peakGain = React.useMemo(() => {
+    return EQEngine.calculatePeakGain(parametricFilters, preamp, bassBoost, trebleAir, graphicFilters, mode);
+  }, [parametricFilters, preamp, bassBoost, trebleAir, graphicFilters, mode]);
+
+  const isClippingRisk = !loudnessGuard && peakGain > 0.05;
+  const isProtected = loudnessGuard && rawPeakGain > 0 && (preamp + rawPeakGain > 0);
 
   // Calcul des périphériques sélectionnés non traités par Equalizer APO
   const selectedDeviceObjects = deviceList.filter((d) => {
@@ -380,19 +398,29 @@ export const AudioHeader: React.FC = () => {
       {/* Bottom Row: Preamp Slider Full Width Inline */}
       <div className="apple-inner-box flex flex-wrap items-center justify-between gap-4 p-3.5 sm:px-4">
         <div className="flex items-center gap-2 shrink-0">
-          <Gauge className={`h-4 w-4 ${isClippingRisk ? "text-amber-500" : "text-[#0A84FF]"}`} />
+          <Gauge className={`h-4 w-4 ${isClippingRisk ? "text-amber-500" : isProtected ? "text-emerald-500" : "text-[#0A84FF]"}`} />
           <span className="text-xs font-bold text-[color:var(--text-primary)]">
             {t.audio.masterPreamp}
           </span>
-          <span className="text-[11px] text-tertiary hidden md:inline">
-            (Compensation de saturation APO)
-          </span>
+          {isProtected ? (
+            <span className="text-[11px] text-emerald-500 font-medium hidden md:inline">
+              (Protection 0 dB active : crête limitée à -0.2 dB)
+            </span>
+          ) : isClippingRisk ? (
+            <span className="text-[11px] text-amber-500 font-medium hidden md:inline">
+              (Saturation détectée : +{peakGain.toFixed(1)} dB • Risque de pompage)
+            </span>
+          ) : (
+            <span className="text-[11px] text-tertiary hidden md:inline">
+              (Compensation de saturation APO)
+            </span>
+          )}
         </div>
 
-        <div className="flex-1 max-w-md flex items-center gap-3.5">
+        <div className="flex-1 max-w-lg flex items-center gap-3">
           <input
             type="range"
-            min="-20"
+            min="-30"
             max="15"
             step="0.5"
             value={preamp}
@@ -400,14 +428,30 @@ export const AudioHeader: React.FC = () => {
             className="w-full h-1.5 bg-black/20 dark:bg-black/50 rounded-full appearance-none accent-[#0A84FF] cursor-pointer"
           />
 
+          {/* Bouton Auto-Preamp */}
+          <button
+            type="button"
+            onClick={() => {
+              autoAlignPreamp();
+              notify("Préampli ajusté automatiquement (0 dB sécurisé)", "success");
+            }}
+            title="Ajuster automatiquement le préampli pour éviter la saturation et l'effet de pompage"
+            className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#0A84FF]/10 hover:bg-[#0A84FF]/20 text-[#0A84FF] border border-[#0A84FF]/25 transition cursor-pointer shrink-0"
+          >
+            Auto
+          </button>
+
           <div
             className={`flex items-center gap-1.5 min-w-[66px] justify-center font-mono text-xs font-bold px-2.5 py-1 rounded-lg border shrink-0 ${
               isClippingRisk
                 ? "bg-amber-500/15 border-amber-500/30 text-amber-500"
+                : isProtected
+                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500"
                 : "apple-inner-box text-[color:var(--text-primary)]"
             }`}
           >
             {isClippingRisk && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
+            {isProtected && <ShieldCheck className="h-3 w-3 text-emerald-500 shrink-0" />}
             <span>{preamp > 0 ? `+${preamp.toFixed(1)}` : preamp.toFixed(1)} dB</span>
           </div>
         </div>

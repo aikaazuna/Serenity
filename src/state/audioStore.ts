@@ -22,6 +22,7 @@ interface AudioStore extends AudioState {
   setStereoBalance: (val: number) => void;
   toggleCrossfeed: () => void;
   toggleLoudnessGuard: () => void;
+  autoAlignPreamp: () => void;
   toggleEqEnabled: () => void;
   applyPreset: (preset: AudioPreset) => void;
   saveCustomPreset: (name: string, description?: string) => AudioPreset;
@@ -236,6 +237,21 @@ export const useAudioStore = create<AudioStore>()(
 
       toggleLoudnessGuard: () => {
         set((state) => ({ loudnessGuard: !state.loudnessGuard }));
+        applyToAPO(get());
+      },
+
+      autoAlignPreamp: () => {
+        const state = get();
+        const rawPeakGain = EQEngine.calculatePeakGain(
+          state.parametricFilters,
+          0,
+          state.bassBoost || 0,
+          state.trebleAir || 0,
+          state.graphicFilters,
+          state.mode || 'parametric'
+        );
+        const safePreamp = rawPeakGain > 0 ? -Math.round((rawPeakGain + 0.2) * 10) / 10 : 0;
+        set({ preamp: safePreamp });
         applyToAPO(get());
       },
 
